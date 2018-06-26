@@ -1,0 +1,32 @@
+resolver: nightly-2018-06-02
+
+packages:
+- .
+- ../orderbook
+# - ../crypto-venues
+# - location:
+#     git: https://github.com/runeksvendsen/orderbook.git
+#     commit: d69a6e0bb775545ca657b2ace42519976c0a023a
+#   extra-dep: true
+- location:
+    git: https://github.com/runeksvendsen/crypto-venues.git
+    commit: 1a911a148489cd4b6b204034c2951025989f99ae
+  extra-dep: true
+
+
+# Dependency packages to be pulled from upstream that are not in the resolver
+# (e.g., acme-missiles-0.3)
+extra-deps:
+- logging-3.0.5
+- rate-limit-1.4.0
+- safe-money-0.4.1
+- time-units-1.0.0
+- serialise-0.2.0.0
+- cborg-0.2.0.0
+- half-0.2.2.3
+
+# Override default flag values for local packages and extra-deps
+flags: {}
+
+# Extra package databases containing global packages
+extra-package-dbs: []
