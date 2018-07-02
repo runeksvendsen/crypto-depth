@@ -145,11 +145,8 @@ toRateEdges symbolMap ab@(ABook anyBook@(AnyBook ob)) =
    mkBuyEdge  ba = (quoteNode, baseNode, 1 / ba)
    -- Util
    rationalPrice = Money.exchangeRateToRational . oPrice
-   baseNode = lookupOrFail (abBase ob)
-   quoteNode = lookupOrFail (abQuote ob)
-   lookupOrFail sym = fromMaybe (error $ "toEdges: symbol not found: " ++ show sym) $
-        Map.lookup sym symbolMap
-
+   baseNode = lookupSymFail (abBase ob) symbolMap
+   quoteNode = lookupSymFail (abQuote ob) symbolMap
 
 
 --- #### Depth graph #### ---
@@ -186,8 +183,8 @@ sellEdge rateMap symbolMap bs =
   where
     -- Node info
     quoteSym = abQuote bs
-    baseNode = lookupOrFail (abBase bs) symbolMap
-    quoteNode = lookupOrFail quoteSym symbolMap
+    baseNode = lookupSymFail (abBase bs) symbolMap
+    quoteNode = lookupSymFail quoteSym symbolMap
     -- Edge info
     pairSell = Pair (Just . SomeSide . Left $ bs) 
                     (if sellQty == 0 then infinity else 1 / sellQty)
@@ -206,8 +203,8 @@ buyEdge rateMap symbolMap ss =
   where
     -- Nodes info
     quoteSym = abQuote ss
-    baseNode = lookupOrFail (abBase ss) symbolMap
-    quoteNode = lookupOrFail quoteSym symbolMap
+    baseNode = lookupSymFail (abBase ss) symbolMap
+    quoteNode = lookupSymFail quoteSym symbolMap
     -- Edge info
     pairBuy  = Pair (Just . SomeSide . Right $ ss) 
                     (if buyQty == 0 then infinity else 1 / buyQty)

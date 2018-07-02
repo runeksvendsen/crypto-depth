@@ -4,6 +4,7 @@
 module CryptoDepth where
 
 import CryptoDepth.Internal.DPrelude
+import CryptoDepth.Internal.Util
 import qualified CryptoDepth.Paths as Paths
 import CryptoVenues.Types.Market
 import CryptoVenues.Fetch.MarketBook
@@ -20,9 +21,7 @@ main = do
     books <- allBooks
     let rateMap = Paths.buildRateMap books
         (depthGraph, nodeMap) = Paths.buildDepthGraph rateMap books
-        lookupOrFail sym = fromMaybe (error $ "main: symbol not found: " ++ show sym) $
-            Map.lookup sym nodeMap
-        (btcNode, usdNode) = (lookupOrFail "BTC", lookupOrFail "USD")
+        (btcNode, usdNode) = (lookupSymFail "BTC" nodeMap, lookupSymFail "USD" nodeMap)
     print $ sortOn fst $ map swap (Map.toList nodeMap)
     putStrLn ("###### liquidPaths ######" :: String)
     mapM_ print $ take 25 $ 

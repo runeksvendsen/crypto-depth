@@ -1,4 +1,5 @@
-resolver: nightly-2018-06-02
+#resolver: nightly-2018-06-02
+resolver: lts-11.11
 
 packages:
 - .

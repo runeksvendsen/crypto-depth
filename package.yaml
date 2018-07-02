@@ -59,6 +59,7 @@ library:
   source-dirs: src
   ghc-options:
   - -Wall
+  - -fno-warn-name-shadowing
 
 executables:
   crypto-depth:
@@ -70,5 +71,6 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -fno-warn-name-shadowing
     dependencies:
     - crypto-venues
