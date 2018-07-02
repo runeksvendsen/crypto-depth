@@ -21,7 +21,7 @@ module CryptoDepth.Internal.DPrelude
 )
 where
 
-import Protolude hiding (trace, Show, show, error)
+import Protolude hiding (trace, Show, show)
 import Prelude (String, Show, show, id, mod, lookup, error)
 -- import Types.Error as Error
 -- import Types.AppM as AppM
@@ -32,7 +32,6 @@ import GHC.TypeLits as TypeLits (Symbol, KnownSymbol, SomeSymbol(..)
                                 )
 import Control.Monad.Trans.Except as EitherT
 import Control.Monad.Fail
-import Control.Monad.Except hiding (fail)
 import           Data.Vector  (Vector)
 import Text.Printf
 import Data.EitherR (fmapL)

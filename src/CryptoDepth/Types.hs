@@ -80,17 +80,13 @@ instance Show (Pair (Maybe SomeSide) Rational) where
         showSide Nothing = "-"
 
 instance Show SomeSide where
-    show (SomeSide ssE) = either show show ssE
+    show (SomeSide ssE) = either showBuy showSell ssE
 
-instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) 
-            => Show (SellSide venue base quote) where
-    show ss = printf "<SellSide (%s): %s/%s>"
-            (t1 ss) (t2 ss) (t3 ss)
+showSell ss = printf "<SellSide (%s): %s/%s>"
+        (t1 ss) (t2 ss) (t3 ss)
 
-instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) 
-            => Show (BuySide venue base quote) where
-    show ss = printf "<BuySide (%s): %s/%s>"
-            (t1 ss) (t2 ss) (t3 ss)
+showBuy ss = printf "<BuySide (%s): %s/%s>"
+        (t1 ss) (t2 ss) (t3 ss)
 
 -- | Just some order book
 data ABook =

@@ -9,39 +9,21 @@ module CryptoDepth.Paths
 where
 
 import CryptoDepth.Internal.DPrelude hiding (head)
+import CryptoDepth.Internal.Util
 import CryptoDepth.Types
 import OrderBook.Types
 import qualified OrderBook.Matching as Match
+
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Graph.Inductive.PatriciaTree as G
 import qualified Data.Graph.Inductive.Query.SP as G
 import qualified Data.Graph.Inductive.Query.BFS as G
--- import qualified Data.Graph.Inductive.Query.MST as G
 import qualified Data.Graph.Inductive.Internal.RootPath as G
 import Data.List (init, last, tail, head)
 import qualified Control.Monad.Trans.State.Strict as S
 import qualified Data.HashMap.Strict as Map
 import qualified Money
 import qualified Data.Vector  as Vec
-
-
-
--- Util
-
-traceIt a = show a `trace` a
-
-pathLabels
-    :: G.LPath b
-    -> [b]
-pathLabels = map snd . G.unLPath
-
-delAllLEdges
-    :: (G.DynGraph gr, Eq b)
-    => [G.LEdge b]
-    -> gr a b
-    -> gr a b
-delAllLEdges edges =
-    flip (foldr G.delAllLEdge) edges
 
 
 --- #### Graph building #### ---
@@ -58,7 +40,7 @@ buildGraph
 buildGraph toEdges books =
     let (edges, nodeMap) = S.runState (buildGraphM toEdges books) Map.empty
         nodes = sortOn fst $ map swap (Map.toList nodeMap)
-    in (G.mkGraph (traceIt nodes) edges, nodeMap)
+    in (G.mkGraph nodes edges, nodeMap)
 
 buildGraphM
     :: forall m edgeLabel. (Monad m, Show edgeLabel)
@@ -105,14 +87,10 @@ allPaths start g =
     -- -- all other nodes are paired with the label of their incoming edge.
 
 
-
 --- #### Rate graph #### ---
 
 type RateGraph = G.Gr Sym Rational
 type USDRateMap = Map.HashMap Sym Rational
-
-getRate :: USDRateMap -> Sym -> Maybe Rational
-getRate = flip Map.lookup
 
 toRate
     :: G.Graph gr
@@ -166,7 +144,7 @@ toRateEdges symbolMap ab@(ABook anyBook@(AnyBook ob)) =
    mkSellEdge bb = (baseNode, quoteNode, bb)
    mkBuyEdge  ba = (quoteNode, baseNode, 1 / ba)
    -- Util
-   rationalPrice = Money.fromExchangeRate . oPrice
+   rationalPrice = Money.exchangeRateToRational . oPrice
    baseNode = lookupOrFail (abBase ob)
    quoteNode = lookupOrFail (abQuote ob)
    lookupOrFail sym = fromMaybe (error $ "toEdges: symbol not found: " ++ show sym) $
@@ -244,18 +222,12 @@ toEdge
 toEdge rateMap symbolMap (SomeSide (Left bs)) = sellEdge rateMap symbolMap bs
 toEdge rateMap symbolMap (SomeSide (Right ss)) = buyEdge rateMap symbolMap ss
 
-lookupRateFail sym rateMap = fromMaybe (error $ "rate not found: " ++ show sym) $
-    getRate rateMap sym
-lookupOrFail sym symbolMap = fromMaybe (error $ "node not found: " ++ show sym) $
-    Map.lookup sym symbolMap
-usdQuoteQty quoteSym rateMap matchRes = 
-    lookupRateFail quoteSym rateMap * toRational (Match.resQuoteQty matchRes)
-
 -- | Paths from given symbol to another given symbol in descending order of liquidity
-liquidPaths rm nm dg f = reverse . liquidPathsR [[]] rm nm dg f
-
+liquidPaths rm nm dg f = 
+    reverse . liquidPathsR [[]] rm nm dg f
+  
 liquidPathsR
-    :: [[G.LNode DepthEdge]]    -- ^ TODO
+    :: [[G.LNode DepthEdge]]    -- ^ Accumulator
     -> USDRateMap
     -> NodeMap
     -> DepthGraph
@@ -263,12 +235,24 @@ liquidPathsR
     -> G.Node                   -- ^ To
     -> [[G.LNode DepthEdge]]    -- ^ List of From->To paths in ascending order of liquidity
 liquidPathsR currPaths rateMap nodeMap g from to =
-    if null (mostLiquidPath g)
+    if null mostLiquidPath
         then currPaths
-        else liquidPathsR (mostLiquidPath g : currPaths) rateMap nodeMap newGraph from to
+        else liquidPathsR (mostLiquidPath : currPaths) rateMap nodeMap newGraph from to
   where
-    mostLiquidPath :: G.Gr a DepthEdge -> [G.LNode DepthEdge]
-    mostLiquidPath = G.unLPath . G.getLPath to . G.spTree from
-    pathEdges :: G.LPath DepthEdge -> [G.LEdge DepthEdge]
-    pathEdges = map (toEdge rateMap nodeMap) . catMaybes . map pFst . pathLabels
-    newGraph = delAllLEdges (pathEdges . G.LP $ mostLiquidPath g) g
+    mostLiquidPath :: [G.LNode DepthEdge]
+    mostLiquidPath = G.unLPath . G.getLPath to . G.spTree from $ g
+    newGraph = delAllLEdges (pathEdges rateMap nodeMap mostLiquidPath) g
+
+pathEdges
+    :: USDRateMap
+    -> NodeMap
+    -> [G.LNode DepthEdge]
+    -> [G.LEdge DepthEdge]
+pathEdges rateMap nodeMap = 
+    map (toEdge rateMap nodeMap) . depthEdgeBooks
+
+depthEdgeBooks
+    :: [G.LNode DepthEdge]
+    -> [SomeSide]
+depthEdgeBooks = 
+     catMaybes . map pFst . map snd
