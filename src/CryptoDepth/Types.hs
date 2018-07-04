@@ -38,8 +38,8 @@ data AnyMarketList =
 data SomeSide =
     forall venue base quote.
     (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
-       SomeSide { someSide :: (Either (BuySide venue base quote) 
-                                      (SellSide venue base quote)) 
+       SomeSide { someSide :: (Either (BuySide venue base quote)
+                                      (SellSide venue base quote))
                 }
 
 instance Eq SomeSide where
@@ -48,25 +48,25 @@ instance Eq SomeSide where
     (SomeSide (Left bs1))  == (SomeSide (Left bs2))  = sideEq bs1 bs2
     (SomeSide (Right ss1)) == (SomeSide (Right ss2)) = sideEq ss1 ss2
 
-sideEq 
-    :: forall a t11 t12 t13 t21 t22 t23. 
+sideEq
+    :: forall a t11 t12 t13 t21 t22 t23.
        ( KnownSymbol t11, KnownSymbol t12, KnownSymbol t13
        , KnownSymbol t21, KnownSymbol t22, KnownSymbol t23
        )
     => a (t11 :: Symbol) (t12 :: Symbol) (t13 :: Symbol)
     -> a (t21 :: Symbol) (t22 :: Symbol) (t23 :: Symbol)
     -> Bool
-sideEq a1 a2 = 
+sideEq a1 a2 =
     case a1 of
-        (_ :: a venue1 base1 quote1) -> 
-            case a2 of 
+        (_ :: a venue1 base1 quote1) ->
+            case a2 of
                 (_ :: a venue2 base2 quote2) ->
                     case sameSymbol (Proxy :: Proxy venue1) (Proxy :: Proxy venue2) of
                         Nothing -> False
-                        Just _  -> 
+                        Just _  ->
                             case sameSymbol (Proxy :: Proxy base1) (Proxy :: Proxy base2) of
                                 Nothing -> False
-                                Just _  -> 
+                                Just _  ->
                                     case sameSymbol (Proxy :: Proxy quote1) (Proxy :: Proxy quote2) of
                                         Nothing -> False
                                         Just _  -> True
@@ -100,17 +100,17 @@ instance Show ABook where
         toS $ abBase ob <> "/" <> abQuote ob <> " (" <> abVenue ob <> ")"
 
 instance Eq ABook where
-    (ABook ob1) == (ABook ob2) = 
+    (ABook ob1) == (ABook ob2) =
         case ob1 of
-            (ob1 :: OrderBook venue1 base1 quote1) -> 
-                case ob2 of 
+            (ob1 :: OrderBook venue1 base1 quote1) ->
+                case ob2 of
                     (ob2 :: OrderBook venue2 base2 quote2) ->
                         case sameSymbol (Proxy :: Proxy venue1) (Proxy :: Proxy venue2) of
                             Nothing -> False
-                            Just _  -> 
+                            Just _  ->
                                 case sameSymbol (Proxy :: Proxy base1) (Proxy :: Proxy base2) of
                                     Nothing -> False
-                                    Just _  -> 
+                                    Just _  ->
                                         case sameSymbol (Proxy :: Proxy quote1) (Proxy :: Proxy quote2) of
                                             Nothing -> False
                                             Just _  -> True
@@ -123,11 +123,11 @@ instance Show (Pair (Maybe ABook) Rational) where
         showBook Nothing = "-"
 
 abBuy :: ABook -> SomeSide
-abBuy (ABook ob) = 
+abBuy (ABook ob) =
     SomeSide . Left . obBids $ ob
 
 abSell :: ABook -> SomeSide
-abSell (ABook ob) = 
+abSell (ABook ob) =
     SomeSide . Right . obAsks $ ob
 
 abBase
@@ -149,17 +149,17 @@ abVenue
 abVenue _ =
     toS $ symbolVal (Proxy :: Proxy venue) :: Text
 
-t1 :: forall a t1 t2 t3. 
-      KnownSymbol t1 
+t1 :: forall a t1 t2 t3.
+      KnownSymbol t1
    => a (t1 :: Symbol) (t2 :: Symbol) (t3 :: Symbol) -> Text
 t1 _ = toS $ symbolVal (Proxy :: Proxy t1) :: Text
 
-t2 :: forall a t1 t2 t3. 
-      KnownSymbol t2 
+t2 :: forall a t1 t2 t3.
+      KnownSymbol t2
    => a (t1 :: Symbol) (t2 :: Symbol) (t3 :: Symbol) -> Text
 t2 _ = toS $ symbolVal (Proxy :: Proxy t2) :: Text
 
-t3 :: forall a t1 t2 t3. 
-      KnownSymbol t3 
+t3 :: forall a t1 t2 t3.
+      KnownSymbol t3
    => a (t1 :: Symbol) (t2 :: Symbol) (t3 :: Symbol) -> Text
 t3 _ = toS $ symbolVal (Proxy :: Proxy t3) :: Text

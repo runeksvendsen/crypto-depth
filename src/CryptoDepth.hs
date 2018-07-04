@@ -25,7 +25,7 @@ main = do
         (btcNode, usdNode) = (lookupSymFail "BTC" nodeMap, lookupSymFail "USD" nodeMap)
     print $ sortOn fst $ map swap (Map.toList nodeMap)
     putStrLn ("###### liquidPaths ######" :: String)
-    mapM_ print $ take 25 $ 
+    mapM_ print $ take 25 $
         Paths.liquidPaths rateMap nodeMap depthGraph btcNode usdNode
 
 

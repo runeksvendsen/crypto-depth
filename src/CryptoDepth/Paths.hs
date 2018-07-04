@@ -172,13 +172,13 @@ toDepthEdges rateMap symbolMap ab@(ABook anyBook@ob) =
    ]
 
 sellEdge
-    :: forall venue base quote. 
+    :: forall venue base quote.
        (KnownSymbol venue, KnownSymbol base, KnownSymbol quote)
     => USDRateMap
     -> NodeMap
     -> BuySide venue base quote
     -> G.LEdge DepthEdge
-sellEdge rateMap symbolMap bs = 
+sellEdge rateMap symbolMap bs =
     (baseNode, quoteNode, pairSell)
   where
     -- Node info
@@ -186,19 +186,19 @@ sellEdge rateMap symbolMap bs =
     baseNode = lookupSymFail (abBase bs) symbolMap
     quoteNode = lookupSymFail quoteSym symbolMap
     -- Edge info
-    pairSell = Pair (Just . SomeSide . Left $ bs) 
+    pairSell = Pair (Just . SomeSide . Left $ bs)
                     (if sellQty == 0 then infinity else 1 / sellQty)
-    sellQty = usdQuoteQty quoteSym rateMap $ 
+    sellQty = usdQuoteQty quoteSym rateMap $
         Match.slippageSell bs slippagePercent
 
 buyEdge
-    :: forall venue base quote. 
+    :: forall venue base quote.
        (KnownSymbol venue, KnownSymbol base, KnownSymbol quote)
     => USDRateMap
     -> NodeMap
     -> SellSide venue base quote
     -> G.LEdge DepthEdge
-buyEdge rateMap symbolMap ss =  
+buyEdge rateMap symbolMap ss =
     (quoteNode, baseNode, pairBuy)
   where
     -- Nodes info
@@ -206,11 +206,11 @@ buyEdge rateMap symbolMap ss =
     baseNode = lookupSymFail (abBase ss) symbolMap
     quoteNode = lookupSymFail quoteSym symbolMap
     -- Edge info
-    pairBuy  = Pair (Just . SomeSide . Right $ ss) 
+    pairBuy  = Pair (Just . SomeSide . Right $ ss)
                     (if buyQty == 0 then infinity else 1 / buyQty)
-    buyQty  = usdQuoteQty quoteSym rateMap $ 
+    buyQty  = usdQuoteQty quoteSym rateMap $
         Match.slippageBuy ss slippagePercent
-   
+
 toEdge
     :: USDRateMap
     -> NodeMap
@@ -220,9 +220,9 @@ toEdge rateMap symbolMap (SomeSide (Left bs)) = sellEdge rateMap symbolMap bs
 toEdge rateMap symbolMap (SomeSide (Right ss)) = buyEdge rateMap symbolMap ss
 
 -- | Paths from given symbol to another given symbol in descending order of liquidity
-liquidPaths rm nm dg f = 
+liquidPaths rm nm dg f =
     reverse . liquidPathsR [[]] rm nm dg f
-  
+
 liquidPathsR
     :: [[G.LNode DepthEdge]]    -- ^ Accumulator
     -> USDRateMap
@@ -245,11 +245,11 @@ pathEdges
     -> NodeMap
     -> [G.LNode DepthEdge]
     -> [G.LEdge DepthEdge]
-pathEdges rateMap nodeMap = 
+pathEdges rateMap nodeMap =
     map (toEdge rateMap nodeMap) . depthEdgeBooks
 
 depthEdgeBooks
     :: [G.LNode DepthEdge]
     -> [SomeSide]
-depthEdgeBooks = 
+depthEdgeBooks =
      catMaybes . map pFst . map snd

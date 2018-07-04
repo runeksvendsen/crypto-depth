@@ -22,27 +22,27 @@ delAllLEdges
 delAllLEdges edges =
     flip (foldr G.delAllLEdge) edges
 
-lookupRateFail 
-    :: (Hashable k, Eq k, Show k) 
-    => k 
-    -> Map.HashMap k a 
+lookupRateFail
+    :: (Hashable k, Eq k, Show k)
+    => k
+    -> Map.HashMap k a
     -> a
 lookupRateFail sym rateMap = fromMaybe (error $ "rate not found: " ++ show sym) $
     Map.lookup sym rateMap
 
-lookupSymFail 
-    :: (Hashable k, Eq k, Show k) 
-    => k 
-    -> Map.HashMap k a 
+lookupSymFail
+    :: (Hashable k, Eq k, Show k)
+    => k
+    -> Map.HashMap k a
     -> a
 lookupSymFail sym symbolMap = fromMaybe (error $ "node not found: " ++ show sym) $
     Map.lookup sym symbolMap
 
-usdQuoteQty 
+usdQuoteQty
     :: (Show k, Eq k, Hashable k)
     => k
     -> Map.HashMap k Rational
     -> Match.MatchResult base quote
     -> Rational
-usdQuoteQty quoteSym rateMap matchRes = 
+usdQuoteQty quoteSym rateMap matchRes =
     lookupRateFail quoteSym rateMap * toRational (Match.resQuoteQty matchRes)
