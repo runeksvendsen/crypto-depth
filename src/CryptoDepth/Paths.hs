@@ -60,7 +60,7 @@ buildGraphM toEdges =
         :: ABook
         -> [G.LEdge edgeLabel]
         -> GraphM m [G.LEdge edgeLabel]
-    insertBook ab@(ABook (AnyBook ob)) edges = do
+    insertBook ab@(ABook ob) edges = do
         bimap <- S.get
         let (baseSym, quoteSym) = (abBase ob, abQuote ob)
             (baseNode,  baseBimap)  = symbolNode baseSym bimap
@@ -132,7 +132,7 @@ toRateEdges
     :: NodeMap
     -> ABook
     -> [G.LEdge Rational]
-toRateEdges symbolMap ab@(ABook anyBook@(AnyBook ob)) =
+toRateEdges symbolMap ab@(ABook anyBook@ob) =
    catMaybes
        [ mkSellEdge <$> bestBidM    -- Consume bid: quote->base
        , mkBuyEdge  <$> bestAskM    -- Consume ask: base->quote
@@ -166,7 +166,7 @@ toDepthEdges
     -> NodeMap
     -> ABook
     -> [G.LEdge DepthEdge]
-toDepthEdges rateMap symbolMap ab@(ABook anyBook@(AnyBook ob)) =
+toDepthEdges rateMap symbolMap ab@(ABook anyBook@ob) =
    [ sellEdge rateMap symbolMap (obBids ob)
    , buyEdge  rateMap symbolMap (obAsks ob)
    ]

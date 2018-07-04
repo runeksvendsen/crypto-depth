@@ -6,6 +6,7 @@ module CryptoDepth where
 import CryptoDepth.Internal.DPrelude
 import CryptoDepth.Internal.Util
 import qualified CryptoDepth.Paths as Paths
+import OrderBook.Types              (AnyBook(..))
 import CryptoVenues.Types.Market
 import CryptoVenues.Fetch.MarketBook
 import CryptoVenues.Types.AppM
@@ -44,6 +45,7 @@ fetchVenueBooks (AnyVenue p) = do
             []       -> markets
             [btcUsd] -> btcUsd : filter (/= btcUsd) markets
             _ -> error $ marketName ++ ": multiple BTC/USD markets"
+        toABook (AnyBook ob) = Paths.ABook ob
     when (null btcUsdL) $
         putStrLn $ marketName ++ ": no BTCUSD market"
-    map Paths.ABook <$> Throttle.fetchRateLimited marketList
+    map toABook <$> Throttle.fetchRateLimited marketList

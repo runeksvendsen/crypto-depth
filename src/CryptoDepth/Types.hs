@@ -90,16 +90,17 @@ showBuy ss = printf "<BuySide (%s): %s/%s>"
 
 -- | Just some order book
 data ABook =
-    forall venue.
-    MarketBook venue
-       => ABook { aBook :: AnyBook venue }
+    forall venue base quote.
+    ( KnownSymbol venue, KnownSymbol base, KnownSymbol quote
+    , MarketBook venue)
+       => ABook (OrderBook venue base quote)
 
 instance Show ABook where
-    show (ABook (AnyBook ob)) =
+    show (ABook ob) =
         toS $ abBase ob <> "/" <> abQuote ob <> " (" <> abVenue ob <> ")"
 
 instance Eq ABook where
-    (ABook (AnyBook ob1)) == (ABook (AnyBook ob2)) = 
+    (ABook ob1) == (ABook ob2) = 
         case ob1 of
             (ob1 :: OrderBook venue1 base1 quote1) -> 
                 case ob2 of 
@@ -122,11 +123,11 @@ instance Show (Pair (Maybe ABook) Rational) where
         showBook Nothing = "-"
 
 abBuy :: ABook -> SomeSide
-abBuy (ABook (AnyBook ob)) = 
+abBuy (ABook ob) = 
     SomeSide . Left . obBids $ ob
 
 abSell :: ABook -> SomeSide
-abSell (ABook (AnyBook ob)) = 
+abSell (ABook ob) = 
     SomeSide . Right . obAsks $ ob
 
 abBase
