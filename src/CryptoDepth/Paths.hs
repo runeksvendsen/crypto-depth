@@ -151,6 +151,7 @@ toRateEdges symbolMap ab@(ABook anyBook@ob) =
 
 --- #### Depth graph #### ---
 
+-- TODO: move out of here
 slippagePercent :: Rational
 slippagePercent = 5 % 1
 
@@ -187,7 +188,7 @@ sellEdge rateMap symbolMap bs =
     quoteNode = lookupSymFail quoteSym symbolMap
     -- Edge info
     pairSell = Pair (Just . SomeSide . Left $ bs)
-                    (if sellQty == 0 then infinity else 1 / sellQty)
+                    (if sellQty == 0 then 1%1 else 1 / sellQty)
     sellQty = usdQuoteQty quoteSym rateMap $
         Match.slippageSell bs slippagePercent
 
@@ -206,8 +207,8 @@ buyEdge rateMap symbolMap ss =
     baseNode = lookupSymFail (abBase ss) symbolMap
     quoteNode = lookupSymFail quoteSym symbolMap
     -- Edge info
-    pairBuy  = Pair (Just . SomeSide . Right $ ss)
-                    (if buyQty == 0 then infinity else 1 / buyQty)
+    pairBuy = Pair (Just . SomeSide . Right $ ss)
+                    (if buyQty == 0 then 1%1 else 1 / buyQty)
     buyQty  = usdQuoteQty quoteSym rateMap $
         Match.slippageBuy ss slippagePercent
 
@@ -220,8 +221,16 @@ toEdge rateMap symbolMap (SomeSide (Left bs)) = sellEdge rateMap symbolMap bs
 toEdge rateMap symbolMap (SomeSide (Right ss)) = buyEdge rateMap symbolMap ss
 
 -- | Paths from given symbol to another given symbol in descending order of liquidity
+liquidPaths
+    :: USDRateMap
+    -> NodeMap
+    -> DepthGraph
+    -> G.Node          -- ^ From
+    -> G.Node          -- ^ To
+    -> [[SomeSide]]    -- ^ List of From->To paths in descending order of liquidity
 liquidPaths rm nm dg f =
-    reverse . liquidPathsR [[]] rm nm dg f
+    map catMaybes . map (map (pFst . snd)) . filter (not . null)
+        . reverse . liquidPathsR [[]] rm nm dg f
 
 liquidPathsR
     :: [[G.LNode DepthEdge]]    -- ^ Accumulator

@@ -1,12 +1,9 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module CryptoDepth.Internal.DPrelude
 ( module Protolude
--- , module Safe
--- , module Error
 , module TypeLits
 , module Prelude
 , module EitherT
--- , module AppM
 , sameSym
 , trace
 , Vector
@@ -15,19 +12,13 @@ module CryptoDepth.Internal.DPrelude
 , fail
 , S.BaseUrl(..), S.Scheme(..)
 , show'
--- * Logging
---, info
---, infoS
 )
 where
 
 import Protolude hiding (trace, Show, show)
 import Prelude (String, Show, show, id, mod, lookup, error)
--- import Types.Error as Error
--- import Types.AppM as AppM
 import Debug.Trace (trace)
--- import Safe hiding (atDef, atMay, foldl1May, foldr1May)
-import GHC.TypeLits as TypeLits (Symbol, KnownSymbol, SomeSymbol(..)
+import GHC.TypeLits as TypeLits ( Symbol, KnownSymbol, SomeSymbol(..)
                                 , sameSymbol, symbolVal, someSymbolVal
                                 )
 import Control.Monad.Trans.Except as EitherT
@@ -35,9 +26,6 @@ import Control.Monad.Fail
 import           Data.Vector  (Vector)
 import Text.Printf
 import Data.EitherR (fmapL)
-import Control.Monad.Trans.Reader
-import qualified Network.HTTP.Client   as HTTP
-import qualified Control.Monad.Parallel   as Par
 import qualified Servant.Client.Core.Reexport as S
 
 show' :: Show a => a -> Text

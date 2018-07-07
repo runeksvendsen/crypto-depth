@@ -8,6 +8,7 @@ import CryptoDepth.Internal.DPrelude
 import CryptoVenues.Types.Market
 import CryptoVenues.Fetch.MarketBook
 import OrderBook.Types
+import qualified OrderBook.Types    as OB
 
 
 data Pair v t = Pair { pFst :: v, pSnd :: t }
@@ -41,6 +42,36 @@ data SomeSide =
        SomeSide { someSide :: (Either (BuySide venue base quote)
                                       (SellSide venue base quote))
                 }
+
+-- | Compose multiple 'SomeSide's into a single one, given they are compatible.
+composeSS :: [SomeSide] -> Either String SomeSide
+composeSS []                           = Left "Empty SomeSide list"
+composeSS [ss]                         = Right ss
+composeSS (SomeSide s1:SomeSide s2:sL) =
+    go s1 s2 >>= composeSS
+  where
+    mkErr = printf "incompatible sides: %s %s"
+    go :: forall venue1 base1 quote1 venue2 base2 quote2.
+          ( KnownSymbol venue1, KnownSymbol base1, KnownSymbol quote1
+          , KnownSymbol venue2, KnownSymbol base2, KnownSymbol quote2 )
+       => Either (BuySide venue1 base1 quote1) (SellSide venue1 base1 quote1)
+       -> Either (BuySide venue2 base2 quote2) (SellSide venue2 base2 quote2)
+       -> Either String [SomeSide]
+    go s1E s2E = case s1E of
+        Left bs1 -> case s2E of
+            Left bs2 ->
+                case sameSymbol (Proxy :: Proxy quote1) (Proxy :: Proxy base2) of
+                    Just Refl -> Right $ (SomeSide . Left $ bs2 `OB.compose` bs1) : sL
+                    Nothing   -> Left $ mkErr (showBuySide bs1) (showBuySide bs2)
+            Right ss2 ->
+                Right $ SomeSide s1E : (SomeSide $ Left (OB.invert ss2 :: BuySide venue2 quote2 base2)) : sL
+        Right ss1 -> case s2E of
+            Right ss2 ->
+                case sameSymbol (Proxy :: Proxy base1) (Proxy :: Proxy quote2) of
+                    Just Refl -> Right $ (SomeSide . Right $ ss1 `OB.compose` ss2) : sL
+                    Nothing   -> Left $ mkErr (showSellSide ss1) (showSellSide ss2)
+            Left bs2 ->
+                Right $ SomeSide s1E : (SomeSide $ Right (OB.invert bs2 :: SellSide venue2 quote2 base2)) : sL
 
 instance Eq SomeSide where
     (SomeSide (Left _))  == (SomeSide (Right _)) = False
@@ -80,12 +111,18 @@ instance Show (Pair (Maybe SomeSide) Rational) where
         showSide Nothing = "-"
 
 instance Show SomeSide where
-    show (SomeSide ssE) = either showBuy showSell ssE
+    show (SomeSide ssE) = either showBuySide showSellSide ssE
 
-showSell ss = printf "<SellSide (%s): %s/%s>"
+showSellSide :: (KnownSymbol venue, KnownSymbol base, KnownSymbol quote)
+             => SellSide venue base quote
+             -> String
+showSellSide ss = printf "<SellSide (%s): %s -> %s>"
         (t1 ss) (t2 ss) (t3 ss)
 
-showBuy ss = printf "<BuySide (%s): %s/%s>"
+showBuySide :: (KnownSymbol venue, KnownSymbol base, KnownSymbol quote)
+            => BuySide venue base quote
+            -> String
+showBuySide ss = printf "<BuySide (%s): %s <- %s>"
         (t1 ss) (t2 ss) (t3 ss)
 
 -- | Just some order book

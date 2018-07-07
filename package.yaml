@@ -19,7 +19,7 @@ synopsis:            Short description of your package
 description:         Please see the README on Github at <https://github.com/runeksvendsen/crypto-venues#readme>
 
 default-extensions:
-- StrictData
+# - StrictData
 - BangPatterns
 - NoImplicitPrelude
 - ScopedTypeVariables
@@ -54,6 +54,8 @@ dependencies:
 - fgl
 - http-client-tls
 - logging
+# GEFX
+- xmlbf
 
 library:
   source-dirs: src
