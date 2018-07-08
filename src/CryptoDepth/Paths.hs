@@ -186,8 +186,7 @@ sellEdge rateMap symbolMap bs =
     baseNode = lookupSymFail (abBase bs) symbolMap
     quoteNode = lookupSymFail quoteSym symbolMap
     -- Edge info
-    pairSell = Pair (Just . SomeSide . Left $ bs)
-                    (if sellQty == 0 then 1000%1 else 1 / sellQty)
+    pairSell = Pair (Just . SomeSide . Left $ bs) (mkEdgeWeight sellQty)
     sellQty = usdQuoteQty quoteSym rateMap $
         Match.slippageSell bs slippagePercent
 
@@ -206,10 +205,14 @@ buyEdge rateMap symbolMap ss =
     baseNode = lookupSymFail (abBase ss) symbolMap
     quoteNode = lookupSymFail quoteSym symbolMap
     -- Edge info
-    pairBuy = Pair (Just . SomeSide . Right $ ss)
-                    (if buyQty == 0 then 1000%1 else 1 / buyQty)
+    pairBuy = Pair (Just . SomeSide . Right $ ss) (mkEdgeWeight buyQty)
     buyQty  = usdQuoteQty quoteSym rateMap $
         Match.slippageBuy ss slippagePercent
+
+mkEdgeWeight :: Rational -> Rational
+mkEdgeWeight qty =
+    if qty == 0 then 1000000%1 else 1 / qty
+    -- A zero-volume edge will get a weight as if it had 1e-6 volume
 
 toEdge
     :: USDRateMap
