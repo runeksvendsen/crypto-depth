@@ -98,13 +98,12 @@ toRate
     -> [G.LNode Rational]
     -> Maybe (Sym, Rational)
 toRate _ [] = Nothing
-toRate g nodes = Just
+toRate g nodes@(firstNode:_) = Just
     (firstNodeLabel, rate)
   where
     rate = 1 / (foldr (*) (1%1) $ map snd nodes)
-    firstNode = fst $ fromMaybe (error $ "toRate: empty node list") $ headMay nodes
     firstNodeLabel = fromMaybe (error $ "toRate: no such node in graph: " ++ show firstNode) $
-        G.lab g firstNode
+        G.lab g (fst firstNode)
 
 buildRateMap :: [ABook] -> USDRateMap
 buildRateMap books =
@@ -188,7 +187,7 @@ sellEdge rateMap symbolMap bs =
     quoteNode = lookupSymFail quoteSym symbolMap
     -- Edge info
     pairSell = Pair (Just . SomeSide . Left $ bs)
-                    (if sellQty == 0 then 1%1 else 1 / sellQty)
+                    (if sellQty == 0 then 1000%1 else 1 / sellQty)
     sellQty = usdQuoteQty quoteSym rateMap $
         Match.slippageSell bs slippagePercent
 
@@ -208,7 +207,7 @@ buyEdge rateMap symbolMap ss =
     quoteNode = lookupSymFail quoteSym symbolMap
     -- Edge info
     pairBuy = Pair (Just . SomeSide . Right $ ss)
-                    (if buyQty == 0 then 1%1 else 1 / buyQty)
+                    (if buyQty == 0 then 1000%1 else 1 / buyQty)
     buyQty  = usdQuoteQty quoteSym rateMap $
         Match.slippageBuy ss slippagePercent
 
