@@ -9,7 +9,11 @@ import CryptoVenues.Types.Market
 import CryptoVenues.Fetch.MarketBook
 import OrderBook.Types
 import qualified OrderBook.Types    as OB
+import qualified Data.HashMap.Strict as Map
 
+
+type NodeMap = Map.HashMap Sym Int      -- ^ Map a currency symbol to a graph node ID
+type Sym = Text                         -- ^ A currency symbol, e.g. "USD", "EUR", "BTC", "ETH" etc.
 
 data Pair v t = Pair { pFst :: v, pSnd :: t }
     deriving Eq

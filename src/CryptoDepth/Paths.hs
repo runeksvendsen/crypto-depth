@@ -1,6 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ParallelListComp #-}
+{-# LANGUAGE GADTs #-}
 
 module CryptoDepth.Paths
 ( module CryptoDepth.Types
@@ -11,6 +12,9 @@ where
 import CryptoDepth.Internal.DPrelude hiding (head)
 import CryptoDepth.Internal.Util
 import CryptoDepth.Types
+import CryptoDepth.BuildGraph
+import CryptoDepth.RateMap
+
 import OrderBook.Types
 import qualified OrderBook.Matching as Match
 
@@ -26,126 +30,8 @@ import qualified Money
 import qualified Data.Vector  as Vec
 
 
---- #### Graph building #### ---
-
-type Sym = Text                         -- ^ A currency symbol, e.g. "USD", "EUR", "BTC", "ETH" etc.
-type NodeMap = Map.HashMap Sym Int
-type GraphM m a = S.StateT NodeMap m a
-
-buildGraph
-    :: forall gr edgeLabel. (G.DynGraph gr, Show edgeLabel)
-    => (NodeMap -> ABook -> [G.LEdge edgeLabel])
-    -> [ABook]
-    -> (gr Sym edgeLabel, NodeMap)
-buildGraph toEdges books =
-    let (edges, nodeMap) = S.runState (buildGraphM toEdges books) Map.empty
-        nodes = sortOn fst $ map swap (Map.toList nodeMap)
-    in (G.mkGraph nodes edges, nodeMap)
-
-buildGraphM
-    :: forall m edgeLabel. (Monad m, Show edgeLabel)
-    => (NodeMap -> ABook -> [G.LEdge edgeLabel])
-    -> [ABook]
-    -> GraphM m [G.LEdge edgeLabel]
-buildGraphM toEdges =
-    foldrM insertBook []
-  where
-    symbolNode :: Sym -> NodeMap -> (G.LNode Sym, NodeMap)
-    symbolNode symStr bimap =
-            let nextNode = Map.size bimap in
-            case Map.lookup symStr bimap of
-                Nothing   -> ((nextNode, symStr), Map.insert symStr nextNode bimap)
-                Just node -> ((node,     symStr), bimap)
-    insertBook
-        :: ABook
-        -> [G.LEdge edgeLabel]
-        -> GraphM m [G.LEdge edgeLabel]
-    insertBook ab@(ABook ob) edges = do
-        bimap <- S.get
-        let (baseSym, quoteSym) = (abBase ob, abQuote ob)
-            (baseNode,  baseBimap)  = symbolNode baseSym bimap
-            (quoteNode, quoteBimap) = symbolNode quoteSym baseBimap
-        S.put quoteBimap
-        return $ edges ++ toEdges quoteBimap ab
 
 
---- #### Graph queries #### ---
-
-allPaths
-    :: (G.Graph gr, Real b)
-    => G.Node       -- ^ Start node
-    -> gr a b
-    -> [[G.LNode b]]
-allPaths start g =
-      map init
-    $ filter (not . null)
-    $ map (G.unLPath)
-    $ G.lbft start g
-    -- G.lbft: From source of Data.Graph.Inductive.Query.BFS:
-    --
-    -- -- Note that the label of the first node in a returned path is meaningless;
-    -- -- all other nodes are paired with the label of their incoming edge.
-
-
---- #### Rate graph #### ---
-
-type RateGraph = G.Gr Sym Rational
-type USDRateMap = Map.HashMap Sym Rational
-
-toRate
-    :: G.Graph gr
-    => gr Sym Rational
-    -> [G.LNode Rational]
-    -> Maybe (Sym, Rational)
-toRate _ [] = Nothing
-toRate g nodes@(firstNode:_) = Just
-    (firstNodeLabel, rate)
-  where
-    rate = 1 / (foldr (*) (1%1) $ map snd nodes)
-    firstNodeLabel = fromMaybe (error $ "toRate: no such node in graph: " ++ show firstNode) $
-        G.lab g (fst firstNode)
-
-buildRateMap :: [ABook] -> USDRateMap
-buildRateMap books =
-    toRateMap (graph :: RateGraph) nodeMap
-  where
-    (graph, nodeMap) = buildGraph toRateEdges books
-
-toRateMap
-    :: (G.Graph gr, Show (gr Sym Rational))
-    => gr Sym Rational
-    -> NodeMap
-    -> USDRateMap
-toRateMap g nodeMap =
-      insertRate ("USD", 1 % 1)     -- USD/USD exchange rate is 1
-    $ foldr insertRate Map.empty
-    $ catMaybes
-    $ map (toRate g)
-    $ allPaths (symNode "USD") g
-  where
-    insertRate (sym, rate) rateMap = Map.insert sym rate rateMap
-    symNode sym = fromMaybe (error $ show sym ++  " not found in map") $
-        Map.lookup sym nodeMap
-
-toRateEdges
-    :: NodeMap
-    -> ABook
-    -> [G.LEdge Rational]
-toRateEdges symbolMap ab@(ABook anyBook@ob) =
-   catMaybes
-       [ mkSellEdge <$> bestBidM    -- Consume bid: quote->base
-       , mkBuyEdge  <$> bestAskM    -- Consume ask: base->quote
-       ]
- where
-   bestBidM = rationalPrice <$> bestBid ob
-   bestAskM = rationalPrice <$> bestAsk ob
-   -- Ex.: BTC/USD @ 6500 -> (BTC,USD,6500) (USD,BTC,1/6500)
-   mkSellEdge bb = (baseNode, quoteNode, bb)
-   mkBuyEdge  ba = (quoteNode, baseNode, 1 / ba)
-   -- Util
-   rationalPrice = Money.exchangeRateToRational . oPrice
-   baseNode = lookupSymFail (abBase ob) symbolMap
-   quoteNode = lookupSymFail (abQuote ob) symbolMap
 
 
 --- #### Depth graph #### ---
@@ -157,12 +43,13 @@ slippagePercent = 5 % 1
 type DepthEdge = Pair (Maybe SomeSide) Rational
 type DepthGraph = G.Gr Sym DepthEdge
 
-buildDepthGraph :: USDRateMap -> [ABook] -> (DepthGraph, NodeMap)
+buildDepthGraph :: KnownSymbol numeraire => RateMap numeraire -> [ABook] -> (DepthGraph, NodeMap)
 buildDepthGraph rateMap books =
     buildGraph (toDepthEdges rateMap) books
 
 toDepthEdges
-    :: USDRateMap
+    :: KnownSymbol numeraire
+    => RateMap numeraire
     -> NodeMap
     -> ABook
     -> [G.LEdge DepthEdge]
@@ -172,9 +59,9 @@ toDepthEdges rateMap symbolMap ab@(ABook anyBook@ob) =
    ]
 
 sellEdge
-    :: forall venue base quote.
-       (KnownSymbol venue, KnownSymbol base, KnownSymbol quote)
-    => USDRateMap
+    :: forall venue base quote numeraire.
+       (KnownSymbol venue, KnownSymbol base, KnownSymbol quote, KnownSymbol numeraire)
+    => RateMap numeraire
     -> NodeMap
     -> BuySide venue base quote
     -> G.LEdge DepthEdge
@@ -191,9 +78,9 @@ sellEdge rateMap symbolMap bs =
         Match.slippageSell bs slippagePercent
 
 buyEdge
-    :: forall venue base quote.
-       (KnownSymbol venue, KnownSymbol base, KnownSymbol quote)
-    => USDRateMap
+    :: forall venue base quote numeraire.
+       (KnownSymbol venue, KnownSymbol base, KnownSymbol quote, KnownSymbol numeraire)
+    => RateMap numeraire
     -> NodeMap
     -> SellSide venue base quote
     -> G.LEdge DepthEdge
@@ -209,13 +96,35 @@ buyEdge rateMap symbolMap ss =
     buyQty  = usdQuoteQty quoteSym rateMap $
         Match.slippageBuy ss slippagePercent
 
-mkEdgeWeight :: Rational -> Rational
-mkEdgeWeight qty =
+mkEdgeWeight :: Money.Dense numeraire -> Rational
+mkEdgeWeight dense = let qty = toRational dense in
     if qty == 0 then 1000000%1 else 1 / qty
     -- A zero-volume edge will get a weight as if it had 1e-6 volume
 
+usdQuoteQty
+    :: forall numeraire base quote.
+       (KnownSymbol numeraire, KnownSymbol quote)
+    => Sym
+    -> RateMap numeraire
+    -> Match.MatchResult base quote
+    -> Money.Dense numeraire
+usdQuoteQty quoteSym rateMap matchRes =
+    case lookupRateFail quoteSym rateMap of
+        -- Invert 'RateFrom numeraire' in order to convert *to* 'numeraire'
+        RateFrom erInv -> mkResult (Money.exchangeRateRecip erInv)
+  where
+    mkResult :: forall src.
+                KnownSymbol src
+             => Money.ExchangeRate src numeraire
+             -> Money.Dense numeraire
+    mkResult er =
+        case sameSymbol (Proxy :: Proxy quote) (Proxy :: Proxy src) of
+            Just Refl -> Money.exchange er (Match.resQuoteQty matchRes)
+            Nothing   -> error $ printf "RateMap: wrong 'src' for sym '%s': %s" quoteSym (show er)
+
 toEdge
-    :: USDRateMap
+    :: KnownSymbol numeraire
+    => RateMap numeraire
     -> NodeMap
     -> SomeSide
     -> G.LEdge DepthEdge
@@ -224,7 +133,8 @@ toEdge rateMap symbolMap (SomeSide (Right ss)) = buyEdge rateMap symbolMap ss
 
 -- | Paths from given symbol to another given symbol in descending order of liquidity
 liquidPaths
-    :: USDRateMap
+    :: KnownSymbol numeraire
+    => RateMap numeraire
     -> NodeMap
     -> DepthGraph
     -> G.Node          -- ^ From
@@ -235,8 +145,9 @@ liquidPaths rm nm dg f =
         . reverse . liquidPathsR [[]] rm nm dg f
 
 liquidPathsR
-    :: [[G.LNode DepthEdge]]    -- ^ Accumulator
-    -> USDRateMap
+    :: KnownSymbol numeraire
+    => [[G.LNode DepthEdge]]    -- ^ Accumulator
+    -> RateMap numeraire
     -> NodeMap
     -> DepthGraph
     -> G.Node                   -- ^ From
@@ -252,7 +163,8 @@ liquidPathsR currPaths rateMap nodeMap g from to =
     newGraph = delAllLEdges (pathEdges rateMap nodeMap mostLiquidPath) g
 
 pathEdges
-    :: USDRateMap
+    :: KnownSymbol numeraire
+    => RateMap numeraire
     -> NodeMap
     -> [G.LNode DepthEdge]
     -> [G.LEdge DepthEdge]

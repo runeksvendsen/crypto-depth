@@ -27,6 +27,8 @@ import           Data.Vector  (Vector)
 import Text.Printf
 import Data.EitherR (fmapL)
 import qualified Servant.Client.Core.Reexport as S
+import qualified Money
+
 
 show' :: Show a => a -> Text
 show' = toS . show

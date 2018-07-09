@@ -37,12 +37,3 @@ lookupSymFail
     -> a
 lookupSymFail sym symbolMap = fromMaybe (error $ "node not found: " ++ show sym) $
     Map.lookup sym symbolMap
-
-usdQuoteQty
-    :: (Show k, Eq k, Hashable k)
-    => k
-    -> Map.HashMap k Rational
-    -> Match.MatchResult base quote
-    -> Rational
-usdQuoteQty quoteSym rateMap matchRes =
-    lookupRateFail quoteSym rateMap * toRational (Match.resQuoteQty matchRes)

@@ -8,6 +8,7 @@ import CryptoDepth.Internal.DPrelude
 import CryptoDepth.Internal.Util
 import qualified CryptoDepth.Exchange as Exchange
 import qualified CryptoDepth.Paths as Paths
+import qualified CryptoDepth.RateMap as Rate
 import OrderBook.Types              (AnyBook(..))
 import CryptoVenues.Types.Market
 import CryptoVenues.Fetch.MarketBook
@@ -23,7 +24,7 @@ import Data.List ((\\))
 
 
 -- | In which currency do we want to measure liquidity?
-type Numeraire = "USD"
+type Numeraire = "JPY"
 
 -- | Measure how much can be bought/sold while, at most, moving the price by this percentage
 slippagePercent :: Rational
@@ -73,14 +74,14 @@ getSymVolumes
     :: forall numeraire.
        KnownSymbol numeraire
     => [Paths.ABook]
-    -> Rational
+    -> Rational     -- ^ Slippage in percent
     -> [(Paths.Sym, Money.Dense numeraire, Money.Dense numeraire)]
 getSymVolumes books slipPct =
     sortBy descSellVolume $ (map buySellSlips nodeSyms)
   where
     -- Sort by descending sell volume
     descSellVolume (_,_,s1) (_,_,s2) = s2 `compare` s1
-    rateMap = Paths.buildRateMap books
+    !rateMap = Rate.buildRateMap books
     (depthGraph, nodeMap) = Paths.buildDepthGraph rateMap books
     nodeSyms = filter (not . (`elem` nonCryptos)) $ map fst (Map.toList nodeMap)
     throwErr = either (error . unlines) id
@@ -93,7 +94,7 @@ getSymVolumes books slipPct =
 pathBuySellVol
     :: forall numeraire.
        KnownSymbol numeraire
-    => Paths.USDRateMap
+    => Rate.RateMap numeraire
     -> Paths.NodeMap
     -> Paths.DepthGraph
     -> Rational                                                         -- ^ Slippage (in percent)
@@ -143,8 +144,9 @@ fetchVenueBooks (AnyVenue p) = do
         toABook (AnyBook ob) = Paths.ABook ob
     putStrLn (printf "%s: %d markets" marketName (length allMarkets) :: String)
     -- Begin DEBUG stuff
-    let numeraire = toS $ symbolVal (Proxy :: Proxy Numeraire)
-        numeraireLst = filter (\mkt -> miBase mkt == numeraire || miQuote mkt == numeraire) allMarkets
+    let btcEth = ["BTC", "ETH"]
+        numeraire = toS $ symbolVal (Proxy :: Proxy Numeraire)
+        numeraireLst = filter (\mkt -> miBase mkt `elem` btcEth && miQuote mkt == numeraire) allMarkets
         markets = take (numObLimit - length numeraireLst) (allMarkets \\ numeraireLst)
         marketList = numeraireLst ++ markets
     -- End DEBUG stuff
