@@ -48,17 +48,10 @@ dependencies:
 - errors
 - http-client
 - monad-parallel
-- servant-client
-- servant-client-core
 - unordered-containers
 - fgl
 - http-client-tls
 - logging
-- dependent-map           # RateMap
-- dependent-sum-template  # RateMap
-- dependent-sum           # RateMap
-# GEFX
-- xmlbf
 
 library:
   source-dirs: src

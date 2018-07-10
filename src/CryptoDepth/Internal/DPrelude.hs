@@ -10,7 +10,6 @@ module CryptoDepth.Internal.DPrelude
 , fmapL
 , printf
 , fail
-, S.BaseUrl(..), S.Scheme(..)
 , show'
 )
 where
@@ -26,8 +25,6 @@ import Control.Monad.Fail
 import           Data.Vector  (Vector)
 import Text.Printf
 import Data.EitherR (fmapL)
-import qualified Servant.Client.Core.Reexport as S
-import qualified Money
 
 
 show' :: Show a => a -> Text

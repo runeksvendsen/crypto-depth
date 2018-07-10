@@ -3,12 +3,10 @@ resolver: lts-11.11
 
 packages:
 - .
-- ../orderbook
-# - ../crypto-venues
-# - location:
-#     git: https://github.com/runeksvendsen/orderbook.git
-#     commit: d69a6e0bb775545ca657b2ace42519976c0a023a
-#   extra-dep: true
+- location:
+    git: https://github.com/runeksvendsen/orderbook.git
+    commit: 9b90128e7d63f971af634c388402b95a362603db
+  extra-dep: true
 - location:
     git: https://github.com/runeksvendsen/crypto-venues.git
     commit: 521b2e00ef1de46e12d94dac7ae2788507858f68
