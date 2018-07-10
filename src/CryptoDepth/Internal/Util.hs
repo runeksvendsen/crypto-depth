@@ -1,7 +1,6 @@
 module CryptoDepth.Internal.Util where
 
 import CryptoDepth.Internal.DPrelude hiding (head)
-import qualified OrderBook.Matching as Match
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.HashMap.Strict as Map
 

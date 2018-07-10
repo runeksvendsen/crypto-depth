@@ -3,6 +3,7 @@
 {-# LANGUAGE ParallelListComp #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -fprint-explicit-kinds #-}
 module CryptoDepth.RateMap
 
 where
@@ -14,25 +15,14 @@ import CryptoDepth.BuildGraph
 
 import qualified OrderBook.Types as OB
 
-import qualified OrderBook.Matching as Match
-
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Graph.Inductive.PatriciaTree as G
 import qualified Control.Category as Cat
 
-import qualified Data.Graph.Inductive.Query.SP as G
 import qualified Data.Graph.Inductive.Query.BFS as G
-import qualified Data.Graph.Inductive.Internal.RootPath as G
-import Data.List (init, last, tail, head)
-import qualified Control.Monad.Trans.State.Strict as S
+import Data.List (init)
 import qualified Data.HashMap.Strict as Map
 import qualified Money
-import qualified Data.Vector  as Vec
--- DMap
-import qualified Data.Dependent.Map as Dep
-import           Data.Dependent.Sum ((==>), DSum(..))
-import Data.GADT.Compare.TH
-
 
 
 type RateGraph = G.Gr Sym Money.SomeExchangeRate

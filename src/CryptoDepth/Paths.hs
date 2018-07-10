@@ -21,20 +21,9 @@ import qualified OrderBook.Matching as Match
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.Graph.Inductive.PatriciaTree as G
 import qualified Data.Graph.Inductive.Query.SP as G
-import qualified Data.Graph.Inductive.Query.BFS as G
 import qualified Data.Graph.Inductive.Internal.RootPath as G
-import Data.List (init, last, tail, head)
-import qualified Control.Monad.Trans.State.Strict as S
-import qualified Data.HashMap.Strict as Map
 import qualified Money
-import qualified Data.Vector  as Vec
 
-
-
-
-
-
---- #### Depth graph #### ---
 
 -- TODO: move out of here
 slippagePercent :: Rational
@@ -53,7 +42,7 @@ toDepthEdges
     -> NodeMap
     -> ABook
     -> [G.LEdge DepthEdge]
-toDepthEdges rateMap symbolMap ab@(ABook anyBook@ob) =
+toDepthEdges rateMap symbolMap (ABook ob) =
    [ sellEdge rateMap symbolMap (obBids ob)
    , buyEdge  rateMap symbolMap (obAsks ob)
    ]
