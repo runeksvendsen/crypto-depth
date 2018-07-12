@@ -1,4 +1,3 @@
-#resolver: nightly-2018-06-02
 resolver: lts-11.11
 
 packages:
@@ -9,7 +8,7 @@ packages:
   extra-dep: true
 - location:
     git: https://github.com/runeksvendsen/crypto-venues.git
-    commit: 521b2e00ef1de46e12d94dac7ae2788507858f68
+    commit: e2e582b78e6ab62e65ccb70056f7b267f6cc7633
   extra-dep: true
 
 

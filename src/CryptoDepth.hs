@@ -1,82 +1,35 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ParallelListComp #-}
-module CryptoDepth where
+module CryptoDepth
+( getSymVolumes
+)
+where
 
-import Prelude (lines, unlines)
+import Prelude (unlines)
 import CryptoDepth.Internal.DPrelude
 import CryptoDepth.Internal.Util
 import qualified CryptoDepth.Exchange as Exchange
 import qualified CryptoDepth.Paths as Paths
 import qualified CryptoDepth.RateMap as Rate
-import OrderBook.Types              (AnyBook(..))
-import CryptoVenues.Types.Market
-import CryptoVenues.Fetch.MarketBook
-import CryptoVenues.Types.AppM
-import qualified CryptoVenues.Fetch.Throttle as Throttle
-import qualified CryptoVenues.Fetch.EnumMarkets as EnumMarkets
-import qualified CryptoVenues.Venues as Venues
 import qualified Data.Graph.Inductive.Graph as G
-import qualified Control.Monad.Parallel   as Par
 import qualified Data.HashMap.Strict as Map
 import qualified Money
-import Data.List ((\\))
 
-
--- | In which currency do we want to measure liquidity?
-type Numeraire = "JPY"
-
--- | Measure how much can be bought/sold while, at most, moving the price by this percentage
-slippagePercent :: Rational
-slippagePercent = 5 % 1
 
 -- | Ignore the liquidity of these non-cryptos
 nonCryptos :: [Paths.Sym]
 nonCryptos = ["USD", "EUR", "GBP", "JPY"]
-
--- DEBUG: How many orderbooks to fetch from each venue
---  (not used in production)
-numObLimit :: Int
-numObLimit = 15
-
-main :: AppM IO ()
-main = do
-    books <- allBooks
-    let symVolume = getSymVolumes books slippagePercent
-        symVolume :: [(Paths.Sym, Money.Dense Numeraire, Money.Dense Numeraire)]
-        !outLines = map prettyPrint symVolume
-    putStr initialLine
-    putStr (unlines outLines)
-    putStrLn delimiter
-  where
-    -- Output
-    prettyPrint :: KnownSymbol numeraire
-                => (Paths.Sym, Money.Dense numeraire, Money.Dense numeraire)
-                -> String
-    prettyPrint (nodeSym, buySum, sellSum) = printf formatStr
-        (toS nodeSym :: String)
-        (showDense buySum)
-        (showDense sellSum)
-    formatStr = "%s\t%17s\t%17s"
-    delimiter = "-------------------------------------------------"
-    initialLine = unlines
-                  [ delimiter
-                  , printf formatStr
-                        ("sym" :: String)
-                        ("buy_volume" :: String)
-                        ("sell_volume" :: String)
-                  , delimiter
-                  ]
 
 -- | Get buy/sell volume, at the given slippage, for all cryptos in the 'ABook' list.
 --  Ignores symbols in 'nonCryptos'.
 getSymVolumes
     :: forall numeraire.
        KnownSymbol numeraire
-    => [Paths.ABook]
-    -> Rational     -- ^ Slippage in percent
+    => Rational     -- ^ Measure how much can be bought/sold while, at most, moving the price by this percentage
+    -> [Paths.ABook]
     -> [(Paths.Sym, Money.Dense numeraire, Money.Dense numeraire)]
-getSymVolumes books slipPct =
+getSymVolumes slipPct books =
     sortBy descSellVolume $ (map buySellSlips nodeSyms)
   where
     -- Sort by descending sell volume
@@ -119,35 +72,3 @@ pathBuySellVol rateMap nodeMap depthGraph slipPct sym = do
         if not . null . lefts $ ps
             then Left  . lefts $ ps
             else Right . sum . rights $ ps
-
-showSomeDense :: Money.SomeDense -> String
-showSomeDense = (`Money.withSomeDense` showDense)
-
-showDense :: forall a. KnownSymbol a => Money.Dense a -> String
-showDense = (++ " " ++ symbolVal (Proxy :: Proxy a))
-                . toS . fromMaybe (error "denseToDecimal")
-                . Money.denseToDecimal Money.Round False (Just ',') '.' 0 (1 % 1)
-
--- | Fetch books, in parallel, from all venues
-allBooks :: AppM IO [Paths.ABook]
-allBooks =
-   concat <$> Par.forM Venues.allVenues fetchVenueBooks
-
--- | Fetch books from a single venue
---  DEBUG: limit number of fetched books to 'numObLimit'
-fetchVenueBooks
-   :: AnyVenue
-   -> AppM IO [Paths.ABook]
-fetchVenueBooks (AnyVenue p) = do
-    allMarkets :: [Market venue] <- EnumMarkets.marketList p
-    let marketName = symbolVal (Proxy :: Proxy venue)
-        toABook (AnyBook ob) = Paths.ABook ob
-    putStrLn (printf "%s: %d markets" marketName (length allMarkets) :: String)
-    -- Begin DEBUG stuff
-    let btcEth = ["BTC", "ETH"]
-        numeraire = toS $ symbolVal (Proxy :: Proxy Numeraire)
-        numeraireLst = filter (\mkt -> miBase mkt `elem` btcEth && miQuote mkt == numeraire) allMarkets
-        markets = take (numObLimit - length numeraireLst) (allMarkets \\ numeraireLst)
-        marketList = numeraireLst ++ markets
-    -- End DEBUG stuff
-    map toABook <$> Throttle.fetchRateLimited marketList

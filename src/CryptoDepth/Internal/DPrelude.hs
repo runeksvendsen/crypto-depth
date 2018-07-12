@@ -32,6 +32,3 @@ show' = toS . show
 
 sameSym :: (KnownSymbol a, KnownSymbol b) => Proxy a -> Proxy b -> Bool
 sameSym a b = isJust (sameSymbol a b)
-
-instance MonadFail (Either Text) where
-  fail = Left . toS

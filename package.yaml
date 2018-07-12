@@ -52,6 +52,8 @@ dependencies:
 - fgl
 - http-client-tls
 - logging
+- lucid   # Output.HTML
+- text
 
 library:
   source-dirs: src
