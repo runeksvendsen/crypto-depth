@@ -35,7 +35,7 @@ getSymVolumes slipPct books =
     -- Sort by descending sell volume
     descSellVolume (_,_,s1) (_,_,s2) = s2 `compare` s1
     !rateMap = Rate.buildRateMap books
-    (depthGraph, nodeMap) = Paths.buildDepthGraph rateMap books
+    (depthGraph, nodeMap) = Paths.buildDepthGraph slipPct rateMap books
     nodeSyms = filter (not . (`elem` nonCryptos)) $ map fst (Map.toList nodeMap)
     throwErr = either (error . unlines) id
     buySellSlips nodeSym =
@@ -67,7 +67,7 @@ pathBuySellVol rateMap nodeMap depthGraph slipPct sym = do
                 -> G.Node
                 -> [Either String (Money.Dense numeraire)]
     pathVolumes from to = map (Exchange.slippageExchangeMulti slipPct) $
-        Paths.liquidPaths rateMap nodeMap depthGraph from to
+        Paths.liquidPaths slipPct rateMap nodeMap depthGraph from to
     mkResult ps =
         if not . null . lefts $ ps
             then Left  . lefts $ ps

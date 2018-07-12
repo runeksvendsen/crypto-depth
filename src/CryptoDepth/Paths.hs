@@ -25,26 +25,28 @@ import qualified Data.Graph.Inductive.Internal.RootPath as G
 import qualified Money
 
 
--- TODO: move out of here
-slippagePercent :: Rational
-slippagePercent = 5 % 1
-
 type DepthEdge = Pair (Maybe SomeSide) Rational
 type DepthGraph = G.Gr Sym DepthEdge
 
-buildDepthGraph :: KnownSymbol numeraire => RateMap numeraire -> [ABook] -> (DepthGraph, NodeMap)
-buildDepthGraph rateMap books =
-    buildGraph (toDepthEdges rateMap) books
+buildDepthGraph
+    :: KnownSymbol numeraire
+    => Rational
+    -> RateMap numeraire
+    -> [ABook]
+    -> (DepthGraph, NodeMap)
+buildDepthGraph slipPct rateMap books =
+    buildGraph (toDepthEdges slipPct rateMap) books
 
 toDepthEdges
     :: KnownSymbol numeraire
-    => RateMap numeraire
+    => Rational
+    -> RateMap numeraire
     -> NodeMap
     -> ABook
     -> [G.LEdge DepthEdge]
-toDepthEdges rateMap symbolMap (ABook ob) =
-   [ sellEdge rateMap symbolMap (obBids ob)
-   , buyEdge  rateMap symbolMap (obAsks ob)
+toDepthEdges slipPct rateMap symbolMap (ABook ob) =
+   [ sellEdge rateMap symbolMap slipPct (obBids ob)
+   , buyEdge  rateMap symbolMap slipPct (obAsks ob)
    ]
 
 sellEdge
@@ -52,9 +54,10 @@ sellEdge
        (KnownSymbol venue, KnownSymbol base, KnownSymbol quote, KnownSymbol numeraire)
     => RateMap numeraire
     -> NodeMap
+    -> Rational
     -> BuySide venue base quote
     -> G.LEdge DepthEdge
-sellEdge rateMap symbolMap bs =
+sellEdge rateMap symbolMap slipPct bs =
     (baseNode, quoteNode, pairSell)
   where
     -- Node info
@@ -64,16 +67,17 @@ sellEdge rateMap symbolMap bs =
     -- Edge info
     pairSell = Pair (Just . SomeSide . Left $ bs) (mkEdgeWeight sellQty)
     sellQty = usdQuoteQty quoteSym rateMap $
-        Match.slippageSell bs slippagePercent
+        Match.slippageSell bs slipPct
 
 buyEdge
     :: forall venue base quote numeraire.
        (KnownSymbol venue, KnownSymbol base, KnownSymbol quote, KnownSymbol numeraire)
     => RateMap numeraire
     -> NodeMap
+    -> Rational
     -> SellSide venue base quote
     -> G.LEdge DepthEdge
-buyEdge rateMap symbolMap ss =
+buyEdge rateMap symbolMap slipPct ss =
     (quoteNode, baseNode, pairBuy)
   where
     -- Nodes info
@@ -83,7 +87,7 @@ buyEdge rateMap symbolMap ss =
     -- Edge info
     pairBuy = Pair (Just . SomeSide . Right $ ss) (mkEdgeWeight buyQty)
     buyQty  = usdQuoteQty quoteSym rateMap $
-        Match.slippageBuy ss slippagePercent
+        Match.slippageBuy ss slipPct
 
 mkEdgeWeight :: Money.Dense numeraire -> Rational
 mkEdgeWeight dense = let qty = toRational dense in
@@ -113,52 +117,58 @@ usdQuoteQty quoteSym rateMap matchRes =
 
 toEdge
     :: KnownSymbol numeraire
-    => RateMap numeraire
+    => Rational
+    -> RateMap numeraire
     -> NodeMap
     -> SomeSide
     -> G.LEdge DepthEdge
-toEdge rateMap symbolMap (SomeSide (Left bs)) = sellEdge rateMap symbolMap bs
-toEdge rateMap symbolMap (SomeSide (Right ss)) = buyEdge rateMap symbolMap ss
+toEdge slipPct rateMap symbolMap (SomeSide (Left bs)) =
+    sellEdge rateMap symbolMap slipPct bs
+toEdge slipPct rateMap symbolMap (SomeSide (Right ss)) =
+    buyEdge rateMap symbolMap slipPct ss
 
 -- | Paths from given symbol to another given symbol in descending order of liquidity
 liquidPaths
     :: KnownSymbol numeraire
-    => RateMap numeraire
+    => Rational
+    -> RateMap numeraire
     -> NodeMap
     -> DepthGraph
     -> G.Node          -- ^ From
     -> G.Node          -- ^ To
     -> [[SomeSide]]    -- ^ List of From->To paths in descending order of liquidity
-liquidPaths rm nm dg f =
+liquidPaths slip rm nm dg f =
     map catMaybes . map (map (pFst . snd)) . filter (not . null)
-        . reverse . liquidPathsR [[]] rm nm dg f
+        . reverse . liquidPathsR [[]] slip rm nm dg f
 
 liquidPathsR
     :: KnownSymbol numeraire
     => [[G.LNode DepthEdge]]    -- ^ Accumulator
+    -> Rational
     -> RateMap numeraire
     -> NodeMap
     -> DepthGraph
     -> G.Node                   -- ^ From
     -> G.Node                   -- ^ To
     -> [[G.LNode DepthEdge]]    -- ^ List of From->To paths in ascending order of liquidity
-liquidPathsR currPaths rateMap nodeMap g from to =
+liquidPathsR currPaths slipPct rateMap nodeMap g from to =
     if null mostLiquidPath
         then currPaths
-        else liquidPathsR (mostLiquidPath : currPaths) rateMap nodeMap newGraph from to
+        else liquidPathsR (mostLiquidPath : currPaths) slipPct rateMap nodeMap newGraph from to
   where
     mostLiquidPath :: [G.LNode DepthEdge]
     mostLiquidPath = G.unLPath . G.getLPath to . G.spTree from $ g
-    newGraph = delAllLEdges (pathEdges rateMap nodeMap mostLiquidPath) g
+    newGraph = delAllLEdges (pathEdges slipPct rateMap nodeMap mostLiquidPath) g
 
 pathEdges
     :: KnownSymbol numeraire
-    => RateMap numeraire
+    => Rational
+    -> RateMap numeraire
     -> NodeMap
     -> [G.LNode DepthEdge]
     -> [G.LEdge DepthEdge]
-pathEdges rateMap nodeMap =
-    map (toEdge rateMap nodeMap) . depthEdgeBooks
+pathEdges slipPct rateMap nodeMap =
+    map (toEdge slipPct rateMap nodeMap) . depthEdgeBooks
 
 depthEdgeBooks
     :: [G.LNode DepthEdge]
