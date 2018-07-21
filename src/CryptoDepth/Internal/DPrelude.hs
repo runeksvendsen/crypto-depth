@@ -7,6 +7,7 @@ module CryptoDepth.Internal.DPrelude
 , sameSym
 , trace
 , Vector
+, Map
 , fmapL
 , printf
 , fail
@@ -14,7 +15,7 @@ module CryptoDepth.Internal.DPrelude
 )
 where
 
-import Protolude hiding (trace, Show, show)
+import Protolude hiding (trace, Show, show, Map)
 import Prelude (String, Show, show, id, mod, lookup, error)
 import Debug.Trace (trace)
 import GHC.TypeLits as TypeLits ( Symbol, KnownSymbol, SomeSymbol(..)
@@ -25,10 +26,15 @@ import Control.Monad.Fail
 import           Data.Vector  (Vector)
 import Text.Printf
 import Data.EitherR (fmapL)
+import qualified Data.HashMap.Strict as Map
 
+type Map = Map.HashMap
 
 show' :: Show a => a -> Text
 show' = toS . show
 
 sameSym :: (KnownSymbol a, KnownSymbol b) => Proxy a -> Proxy b -> Bool
 sameSym a b = isJust (sameSymbol a b)
+
+instance KnownSymbol sym => StringConv (Proxy sym) Text where
+    strConv _ _ = toS $ symbolVal (Proxy :: Proxy sym)

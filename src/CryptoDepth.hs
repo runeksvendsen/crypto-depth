@@ -2,13 +2,20 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE ParallelListComp #-}
 module CryptoDepth
-( getSymVolumes
+( symLiquidPaths
+, allPathsInfos
+, totals
+, LiquidPaths(..)
+, Exchange.PathInfo(..)
+, groupVenues
+, Sym
 )
 where
 
-import Prelude (unlines)
 import CryptoDepth.Internal.DPrelude
+import CryptoDepth.Internal.Types
 import CryptoDepth.Internal.Util
+import           CryptoDepth.Exchange (PathInfo(..))
 import qualified CryptoDepth.Exchange as Exchange
 import qualified CryptoDepth.Paths as Paths
 import qualified CryptoDepth.RateMap as Rate
@@ -18,57 +25,99 @@ import qualified Money
 
 
 -- | Ignore the liquidity of these non-cryptos
-nonCryptos :: [Paths.Sym]
+nonCryptos :: [Sym]
 nonCryptos = ["USD", "EUR", "GBP", "JPY"]
 
--- | Get buy/sell volume, at the given slippage, for all cryptos in the 'ABook' list.
---  Ignores symbols in 'nonCryptos'.
-getSymVolumes
-    :: forall numeraire.
-       KnownSymbol numeraire
-    => Rational     -- ^ Measure how much can be bought/sold while, at most, moving the price by this percentage
-    -> [Paths.ABook]
-    -> [(Paths.Sym, Money.Dense numeraire, Money.Dense numeraire)]
-getSymVolumes slipPct books =
-    sortBy descSellVolume $ (map buySellSlips nodeSyms)
+totals
+    :: KnownSymbol numeraire
+    => Map Sym ([PathInfo numeraire], [PathInfo numeraire])
+    -> [(Sym, Money.Dense numeraire, Money.Dense numeraire)]
+totals =
+    sortBy descSellVolume . map total . Map.toList
   where
     -- Sort by descending sell volume
     descSellVolume (_,_,s1) (_,_,s2) = s2 `compare` s1
+    total (sym, (buy, sell)) =
+        (sym, Exchange.piTotalQty buy, Exchange.piTotalQty sell)
+
+allPathsInfos
+    :: KnownSymbol numeraire
+    => Rational
+    -> Map Sym (LiquidPaths numeraire)
+    -> Either String (Map Sym ([PathInfo numeraire], [PathInfo numeraire]))
+allPathsInfos slipPct lpMap =
+    Map.fromList <$> traverse (pathInfos slipPct) (Map.toList lpMap)
+
+pathInfos
+    :: KnownSymbol numeraire
+    => Rational
+    -> (Sym, LiquidPaths numeraire)
+    -> Either String (Sym, ([PathInfo numeraire], [PathInfo numeraire]))
+pathInfos slipPct (mapSym, LiquidPaths buyPaths sellPaths) = do
+    buyVol  <- traverse (exchange mapSym) buyPaths
+    sellVol <- traverse (exchange mapSym) sellPaths
+    return (mapSym, (buyVol, sellVol))
+  where
+    exchange targetSym path = do
+        (pathSym, pathVol) <- Exchange.slippageExchangeMulti slipPct path
+        if pathSym /= targetSym
+            then Left $ printf "pathSym (%s) /= targetSym (%s): %s" pathSym targetSym (show path)
+            else Right pathVol
+
+-- | Get most liquid paths for all cryptos in the 'ABook' list.
+--  Ignores symbols in 'nonCryptos'.
+symLiquidPaths
+    :: forall numeraire.
+       KnownSymbol numeraire
+    => Rational                             -- ^ Measure how much can be bought/sold while, at most, moving the price by this percentage
+    -> [Paths.ABook]
+    -> Map Sym (LiquidPaths numeraire)  -- ^ For each crypto, all the paths that the given crypto can be bought/sold through
+symLiquidPaths slipPct books =
+    foldr (uncurry Map.insert) Map.empty $ map buySellSlips nodeSyms
+  where
     !rateMap = Rate.buildRateMap books
     (depthGraph, nodeMap) = Paths.buildDepthGraph slipPct rateMap books
     nodeSyms = filter (not . (`elem` nonCryptos)) $ map fst (Map.toList nodeMap)
-    throwErr = either (error . unlines) id
     buySellSlips nodeSym =
-        let (buyVol, sellVol) = throwErr $ pathBuySellVol
-                rateMap nodeMap depthGraph slipPct nodeSym
-        in (nodeSym, buyVol, sellVol)
+        let pathRes = buySellPath rateMap nodeMap depthGraph slipPct nodeSym
+        in (nodeSym, pathRes)
 
--- | Get buy/sell volume, at the given slippage, for the specified crypto
-pathBuySellVol
+-- | The most liquid paths from some symbol to "numeraire",
+--    in both buy and sell direction (in descending order of
+--    liquidity)
+data LiquidPaths (numeraire :: Symbol) =
+    LiquidPaths
+    { lpBuy  :: [[SomeEdgeVenue]]
+    , lpSell :: [[SomeEdgeVenue]]
+    }
+
+-- | Get buy and sell paths, at the given slippage, for the specified crypto
+buySellPath
     :: forall numeraire.
        KnownSymbol numeraire
     => Rate.RateMap numeraire
     -> Paths.NodeMap
     -> Paths.DepthGraph
     -> Rational                                                         -- ^ Slippage (in percent)
-    -> Paths.Sym                                                        -- ^ Cryptocurrency symbol
-    -> Either [String] (Money.Dense numeraire, Money.Dense numeraire)   -- ^ (buy,sell) volume
-pathBuySellVol rateMap nodeMap depthGraph slipPct sym = do
-    sellVol <- mkResult (pathVolumes sellFrom sellTo)
-    buyVol <- mkResult (pathVolumes buyFrom buyTo)
-    return (buyVol, sellVol)
+    -> Sym                                                              -- ^ Cryptocurrency symbol
+    -> LiquidPaths numeraire
+buySellPath rateMap nodeMap depthGraph slipPct sym =
+    LiquidPaths buyPaths sellPaths
   where
+    sellPaths = pathVolumes sellFrom sellTo
+    buyPaths = pathVolumes buyFrom buyTo
     (sellTo, sellFrom) = (lookupSymFail numeraire nodeMap, lookupSymFail sym nodeMap)
     (buyTo, buyFrom) = (lookupSymFail sym nodeMap, lookupSymFail numeraire nodeMap)
     numeraire = toS $ symbolVal (Proxy :: Proxy numeraire)
     -- Util
-    pathVolumes :: KnownSymbol numeraire
-                => G.Node
+    pathVolumes :: G.Node
                 -> G.Node
-                -> [Either String (Money.Dense numeraire)]
-    pathVolumes from to = map (Exchange.slippageExchangeMulti slipPct) $
+                -> [[SomeEdgeVenue]]
+    pathVolumes from to =
         Paths.liquidPaths slipPct rateMap nodeMap depthGraph from to
-    mkResult ps =
-        if not . null . lefts $ ps
-            then Left  . lefts $ ps
-            else Right . sum . rights $ ps
+
+
+mkResult ps =
+    if not . null . lefts $ ps
+        then Left  . lefts $ ps
+        else Right . sum . rights $ ps

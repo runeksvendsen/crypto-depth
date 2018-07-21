@@ -4,18 +4,19 @@
 {-# LANGUAGE GADTs #-}
 
 module CryptoDepth.Paths
-( module CryptoDepth.Types
+( module CryptoDepth.Internal.Types
 , module CryptoDepth.Paths
 )
 where
 
 import CryptoDepth.Internal.DPrelude hiding (head)
 import CryptoDepth.Internal.Util
-import CryptoDepth.Types
+import CryptoDepth.Internal.Types
 import CryptoDepth.BuildGraph
 import CryptoDepth.RateMap
 
 import OrderBook.Types
+import qualified OrderBook.Types as OB
 import qualified OrderBook.Matching as Match
 
 import qualified Data.Graph.Inductive.Graph as G
@@ -25,7 +26,7 @@ import qualified Data.Graph.Inductive.Internal.RootPath as G
 import qualified Money
 
 
-type DepthEdge = Pair (Maybe SomeSide) Rational
+type DepthEdge = Pair (Maybe SomeEdgeVenue) Rational
 type DepthGraph = G.Gr Sym DepthEdge
 
 buildDepthGraph
@@ -45,49 +46,30 @@ toDepthEdges
     -> ABook
     -> [G.LEdge DepthEdge]
 toDepthEdges slipPct rateMap symbolMap (ABook ob) =
-   [ sellEdge rateMap symbolMap slipPct (obBids ob)
-   , buyEdge  rateMap symbolMap slipPct (obAsks ob)
-   ]
+    [ toEdge rateMap symbolMap slipPct (obBuy ob)
+    , toEdge  rateMap symbolMap slipPct (OB.invert <$> obSell ob)
+    ]
 
-sellEdge
-    :: forall venue base quote numeraire.
-       (KnownSymbol venue, KnownSymbol base, KnownSymbol quote, KnownSymbol numeraire)
+toEdge
+    :: forall base quote numeraire.
+       (KnownSymbol base, KnownSymbol quote, KnownSymbol numeraire)
     => RateMap numeraire
     -> NodeMap
     -> Rational
-    -> BuySide venue base quote
+    -> (Venue, BuySide base quote)
     -> G.LEdge DepthEdge
-sellEdge rateMap symbolMap slipPct bs =
+toEdge rateMap symbolMap slipPct (venue, buySide) =
     (baseNode, quoteNode, pairSell)
   where
     -- Node info
-    quoteSym = abQuote bs
-    baseNode = lookupSymFail (abBase bs) symbolMap
+    quoteSym = sideQuote buySide
+    baseNode = lookupSymFail (sideBase buySide) symbolMap
     quoteNode = lookupSymFail quoteSym symbolMap
     -- Edge info
-    pairSell = Pair (Just . SomeSide . Left $ bs) (mkEdgeWeight sellQty)
+    pairSell = Pair (Just $ SomeEdgeVenue (fromBuySide buySide, venue))
+                    (mkEdgeWeight sellQty)
     sellQty = usdQuoteQty quoteSym rateMap $
-        Match.slippageSell bs slipPct
-
-buyEdge
-    :: forall venue base quote numeraire.
-       (KnownSymbol venue, KnownSymbol base, KnownSymbol quote, KnownSymbol numeraire)
-    => RateMap numeraire
-    -> NodeMap
-    -> Rational
-    -> SellSide venue base quote
-    -> G.LEdge DepthEdge
-buyEdge rateMap symbolMap slipPct ss =
-    (quoteNode, baseNode, pairBuy)
-  where
-    -- Nodes info
-    quoteSym = abQuote ss
-    baseNode = lookupSymFail (abBase ss) symbolMap
-    quoteNode = lookupSymFail quoteSym symbolMap
-    -- Edge info
-    pairBuy = Pair (Just . SomeSide . Right $ ss) (mkEdgeWeight buyQty)
-    buyQty  = usdQuoteQty quoteSym rateMap $
-        Match.slippageBuy ss slipPct
+        Match.slippageSell buySide slipPct
 
 mkEdgeWeight :: Money.Dense numeraire -> Rational
 mkEdgeWeight dense = let qty = toRational dense in
@@ -115,18 +97,6 @@ usdQuoteQty quoteSym rateMap matchRes =
             Just Refl -> Money.exchange er (Match.resQuoteQty matchRes)
             Nothing   -> error $ printf "RateMap: wrong 'src' for sym '%s': %s" quoteSym (show er)
 
-toEdge
-    :: KnownSymbol numeraire
-    => Rational
-    -> RateMap numeraire
-    -> NodeMap
-    -> SomeSide
-    -> G.LEdge DepthEdge
-toEdge slipPct rateMap symbolMap (SomeSide (Left bs)) =
-    sellEdge rateMap symbolMap slipPct bs
-toEdge slipPct rateMap symbolMap (SomeSide (Right ss)) =
-    buyEdge rateMap symbolMap slipPct ss
-
 -- | Paths from given symbol to another given symbol in descending order of liquidity
 liquidPaths
     :: KnownSymbol numeraire
@@ -136,7 +106,7 @@ liquidPaths
     -> DepthGraph
     -> G.Node          -- ^ From
     -> G.Node          -- ^ To
-    -> [[SomeSide]]    -- ^ List of From->To paths in descending order of liquidity
+    -> [[SomeEdgeVenue]]    -- ^ List of From->To paths in descending order of liquidity
 liquidPaths slip rm nm dg f =
     map catMaybes . map (map (pFst . snd)) . filter (not . null)
         . reverse . liquidPathsR [[]] slip rm nm dg f
@@ -168,10 +138,13 @@ pathEdges
     -> [G.LNode DepthEdge]
     -> [G.LEdge DepthEdge]
 pathEdges slipPct rateMap nodeMap =
-    map (toEdge slipPct rateMap nodeMap) . depthEdgeBooks
+    map fromSomeEdgeVenue . depthEdgeBooks
+  where
+    fromSomeEdgeVenue (SomeEdgeVenue (SomeEdge (Edge bs), v)) =
+        toEdge rateMap nodeMap slipPct (v,bs)
 
 depthEdgeBooks
     :: [G.LNode DepthEdge]
-    -> [SomeSide]
+    -> [SomeEdgeVenue]
 depthEdgeBooks =
      catMaybes . map pFst . map snd

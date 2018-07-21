@@ -1,6 +1,7 @@
 module Main where
 
 import CryptoDepth.Internal.DPrelude
+import CryptoDepth.Internal.Types
 import qualified CryptoDepth
 import qualified CryptoDepth.Paths as Paths
 import qualified CryptoDepth.Output.CLI as CLI
@@ -24,12 +25,12 @@ import Data.List ((\\))
 
 -- | In which currency do we want to measure liquidity?
 type Numeraire = "USD"
-type NumrDense = Money.Dense Numeraire
+type PathInfoNumr = CryptoDepth.PathInfo Numeraire
 
 -- DEBUG: How many orderbooks to fetch from each venue
 --  (not used in production)
 numObLimit :: Int
-numObLimit = 15
+numObLimit = 30
 
 slippagePercent :: Rational
 slippagePercent = 5 % 1
@@ -41,10 +42,12 @@ maxRetries = 10
 main :: IO ()
 main = withLogging $ do
     man <- HTTP.newManager HTTPS.tlsManagerSettings -- { HTTP.managerModifyRequest = logRequest }
-    let throwErr ioA = ioA >>= either (error . show) return
-    res <- throwErr $ AppM.runAppM man maxRetries $
-        CryptoDepth.getSymVolumes slippagePercent <$> allBooks
-    HTML.htmlOut (res :: [(Paths.Sym, NumrDense, NumrDense)])
+    let throwErrM ioA = ioA >>= either (error . show) return
+    resMap <- throwErrM $ AppM.runAppM man maxRetries $
+        CryptoDepth.symLiquidPaths slippagePercent <$> allBooks
+    let res :: Map Sym ([PathInfoNumr], [PathInfoNumr]) =
+            either error id $ CryptoDepth.allPathsInfos slippagePercent resMap
+    HTML.htmlOut slippagePercent res
 
 withLogging :: IO a -> IO a
 withLogging ioa = Log.withStderrLogging $ do

@@ -7,7 +7,7 @@ module CryptoDepth.BuildGraph
 where
 
 import CryptoDepth.Internal.DPrelude hiding (head)
-import CryptoDepth.Types
+import CryptoDepth.Internal.Types
 
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Control.Monad.Trans.State.Strict as S

@@ -10,7 +10,7 @@ where
 
 import CryptoDepth.Internal.DPrelude hiding (head)
 import CryptoDepth.Internal.Util
-import CryptoDepth.Types
+import CryptoDepth.Internal.Types
 import CryptoDepth.BuildGraph
 
 import qualified OrderBook.Types as OB
