@@ -19,7 +19,6 @@ import qualified Network.HTTP.Client   as HTTP
 import qualified Network.HTTP.Client.TLS as HTTPS
 import qualified Control.Logging as Log
 import qualified Control.Monad.Parallel   as Par
-import qualified Money
 import Data.List ((\\))
 
 

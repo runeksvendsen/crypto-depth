@@ -50,7 +50,6 @@ dependencies:
 - fgl
 - http-client-tls
 - logging
-- thrist
 # Output
 - lucid
 - text

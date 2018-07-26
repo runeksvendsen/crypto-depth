@@ -25,7 +25,6 @@ extra-deps:
 - half-0.2.2.3@sha256:52386a48e7fd42f4a1d49799073bb3d04477168c88b6541d5f66637d7c2e838c
 ### END safe-money deps
 - time-units-1.0.0
-- thrist-0.3.0.2@sha256:77d55c0130e6997d8fcee796de18470a2335b783e3a32d6e02ca4c34b30efd64
 
 
 # Override default flag values for local packages and extra-deps
