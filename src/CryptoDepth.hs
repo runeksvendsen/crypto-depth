@@ -9,6 +9,7 @@ module CryptoDepth
 , Exchange.PathInfo(..)
 , groupVenues
 , Sym
+, ExchangePath(..)
 )
 where
 
@@ -87,8 +88,8 @@ symLiquidPaths slipPct books =
 --    liquidity)
 data LiquidPaths (numeraire :: Symbol) =
     LiquidPaths
-    { lpBuy  :: [[SomeEdgeVenue]]
-    , lpSell :: [[SomeEdgeVenue]]
+    { lpBuy  :: [NonEmpty SomeEdgeVenue]
+    , lpSell :: [NonEmpty SomeEdgeVenue]
     }
 
 -- | Get buy and sell paths, at the given slippage, for the specified crypto
@@ -112,12 +113,6 @@ buySellPath rateMap nodeMap depthGraph slipPct sym =
     -- Util
     pathVolumes :: G.Node
                 -> G.Node
-                -> [[SomeEdgeVenue]]
+                -> [NonEmpty SomeEdgeVenue]
     pathVolumes from to =
         Paths.liquidPaths slipPct rateMap nodeMap depthGraph from to
-
-
-mkResult ps =
-    if not . null . lefts $ ps
-        then Left  . lefts $ ps
-        else Right . sum . rights $ ps

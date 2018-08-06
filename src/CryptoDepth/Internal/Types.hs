@@ -5,6 +5,7 @@
 {-# LANGUAGE TypeApplications #-}
 module CryptoDepth.Internal.Types
 ( module CryptoDepth.Internal.Types
+, module NE
 , Map.HashMap
 )
 where
@@ -16,7 +17,7 @@ import OrderBook.Types
 import qualified OrderBook.Types    as OB
 import qualified Control.Category   as Cat
 import qualified Data.HashMap.Strict as Map
-
+import qualified Data.List.NonEmpty  as NE
 
 type NodeMap = Map.HashMap Sym Int      -- ^ Map a currency symbol to a graph node ID
 type Sym = Text                         -- ^ A currency symbol, e.g. "USD", "EUR", "BTC", "ETH" etc.
@@ -96,28 +97,44 @@ toSymVenue (SomeEdgeVenue (SomeEdge edge, venue)) =
     let (src,dst) = srcDst edge
     in (src,venue,dst)
 
-groupVenues :: [SymVenue] -> [(Venue, [Sym])]
-groupVenues =
-    foldr groupVenue []
+-- | Path through one or more cryptocurrency markets for a specific venue.
+-- E.g. BTC -> ETH -> IOS -> EUR on "bitfinex"
+--  is: ExchangePath "bitfinex" "BTC" "EUR" ["ETH", "IOS"]
+data ExchangePath
+    = ExchangePath
+    { epVenue   :: Venue    -- ^ Venue of the given symbols
+    , epSrc     :: Sym      -- ^ Start symbol
+    , epDst     :: Sym      -- ^ End symbol
+    , epBetween :: [Sym]    -- ^ Ordered list of symbols between "start" and "end" symbol (might be empty)
+    } deriving (Show, Eq)
+
+-- | See "test/Spec.hs" for specification
+groupVenues :: NonEmpty SymVenue -> NE.NonEmpty ExchangePath
+groupVenues symVenues =
+    foldr groupVenue (NE.last epLst :| []) (NE.init epLst)
   where
-    groupVenue (src, nextVenue, dst) [] = [(nextVenue, [src, dst])]
-    groupVenue (src, nextVenue, dst) lst@((venue, syms) : xs) =
-        if nextVenue == venue
-            then (venue, src : syms) : xs       -- Prepend "src" to an existing venue. Current dst is equal to previous src (the first element of 'syms')
-            else (nextVenue, [src, dst]) : lst  -- Two adjacent "src" and "dst" are the same, so we only care about adding both if the venue changes
+    epLst = map toEP symVenues
+    toEP (src, venue, dst) = ExchangePath venue src dst []
+    -- venueL+venueR and srcL+srcR are equal: join into one ExchangePath
+    joinEPs (ExchangePath venueL srcL dstL betweenL)
+            (ExchangePath _      _    dstR betweenR) =
+                ExchangePath venueL srcL dstR (dstL : betweenL ++ betweenR)
+    groupVenue epL@(ExchangePath venueL _ _ _) lst@(epR@(ExchangePath venueR _ _ _) :| xs') =
+        if venueL == venueR
+            then joinEPs epL epR :| xs'
+            else epL <| lst
 
 -- | Compose multiple 'SomeEdge's into a single one, given they are compatible.
-composeSS :: [SomeEdgeVenue] -> Either String (SomeEdge, [SymVenue])
+composeSS :: NonEmpty SomeEdgeVenue -> Either String (SomeEdge, NonEmpty SymVenue)
 composeSS sev = do
     someSide <- composeSSR $ map toSomeEdge sev
     return (someSide, map toSymVenue sev)
 
 -- | Compose multiple 'SomeEdge's into a single one, given they are compatible.
 -- | Compose multiple 'SomeEdge's into a single one, given they are compatible.
-composeSSR :: [SomeEdge] -> Either String SomeEdge
-composeSSR []                           = Left "Empty SomeEdge list"
-composeSSR [ss]                         = Right ss
-composeSSR (SomeEdge s1:SomeEdge s2:sL) =
+composeSSR :: NonEmpty SomeEdge -> Either String SomeEdge
+composeSSR (ss :| [])                   = Right ss
+composeSSR (SomeEdge s1 :| (SomeEdge s2:sL)) =
     go s1 s2 >>= composeSSR
   where
     mkErr = printf "incompatible edges: %s %s"
@@ -126,11 +143,11 @@ composeSSR (SomeEdge s1:SomeEdge s2:sL) =
           , KnownSymbol src2, KnownSymbol dst2 )
        => src1 $-> dst1
        -> src2 $-> dst2
-       -> Either String [SomeEdge]
+       -> Either String (NonEmpty SomeEdge)
     go edge1 edge2 =
         case sameSymbol (Proxy :: Proxy dst1) (Proxy :: Proxy src2) of
             Nothing   -> Left $ mkErr (show edge1) (show edge2)
-            Just Refl -> Right $ (SomeEdge $ edge2 Cat.. edge1) : sL
+            Just Refl -> Right $ (SomeEdge $ edge2 Cat.. edge1) :| sL
 
 instance Eq SomeEdge where
     (SomeEdge edge1) == (SomeEdge edge2) =

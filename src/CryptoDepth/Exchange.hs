@@ -21,7 +21,7 @@ import qualified Data.Text as T
 data PathInfo numeraire =
     PathInfo
     { piQty     :: Money.Dense numeraire
-    , piPath    :: [SymVenue]
+    , piPath    :: NonEmpty SymVenue
     }
 
 -- | Exchange by slippage through multiple orderbook sides
@@ -29,7 +29,7 @@ slippageExchangeMulti
     :: forall numeraire.
        KnownSymbol numeraire
     => Rational                                 -- ^ Slippage, in percent
-    -> [SomeEdgeVenue]                          -- ^ Orderbook sides to go through
+    -> NonEmpty SomeEdgeVenue                   -- ^ Orderbook sides to go through
     -> Either String (Sym, PathInfo numeraire)  -- ^ (Source symbol, amount in target currency)
 slippageExchangeMulti slip sides = do
     (SomeEdge (Edge edge), symVenues) <- composeSS sides

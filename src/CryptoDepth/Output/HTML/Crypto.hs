@@ -11,6 +11,7 @@ import CryptoDepth.Output.HTML.Common
 import qualified CryptoDepth            as CD
 import Lucid
 import qualified Data.Text as T
+import qualified Data.List.NonEmpty as NE
 
 
 crypto
@@ -71,13 +72,12 @@ htmlPath CD.PathInfo{..} =
   where
     separator :: T.Text
     separator = " → "
-    symbolText :: [CD.Sym] -> Text
-    symbolText [] = error "htmlPath: empty symbol list"
-    symbolText [sym] = sym
-    symbolText syms = T.concat ["(", T.concat $ intersperse separator syms, ")"]
-    symVenueHtml :: [Html ()] -> (Text, [CD.Sym]) -> [Html ()]
-    symVenueHtml pre (venue, syms) =
-        (toHtml (symbolText syms) >> sub_ (toHtml venue)) : pre
+    symbolText :: NonEmpty CD.Sym -> Text
+    symbolText (sym :| []) = sym
+    symbolText (syms) = T.concat ["(", T.concat $ intersperse separator (NE.toList syms), ")"]
+    symVenueHtml :: [Html ()] -> CD.ExchangePath -> [Html ()]
+    symVenueHtml pre (CD.ExchangePath venue src dst middle) =
+        (toHtml (symbolText $ src :| middle ++ [dst]) >> sub_ (toHtml venue)) : pre
 
 
 

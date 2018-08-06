@@ -75,3 +75,16 @@ executables:
     - -fno-warn-name-shadowing
     dependencies:
     - crypto-venues
+
+tests:
+  crypto-venues-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - crypto-depth
+    - HUnit
+    - hspec-expectations-pretty-diff

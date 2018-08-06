@@ -106,10 +106,13 @@ liquidPaths
     -> DepthGraph
     -> G.Node          -- ^ From
     -> G.Node          -- ^ To
-    -> [[SomeEdgeVenue]]    -- ^ List of From->To paths in descending order of liquidity
+    -> [NonEmpty SomeEdgeVenue] -- ^ List of From->To paths in descending order of liquidity
 liquidPaths slip rm nm dg f =
-    map catMaybes . map (map (pFst . snd)) . filter (not . null)
+    toNonEmpty . map catMaybes . map (map (pFst . snd))
         . reverse . liquidPathsR [[]] slip rm nm dg f
+  where
+    toNonEmpty = map (nonEmptyErr . nonEmpty) . filter (not . null)
+    nonEmptyErr = fromMaybe (error "non-empty list is empty")
 
 liquidPathsR
     :: KnownSymbol numeraire

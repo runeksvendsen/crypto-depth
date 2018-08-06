@@ -12,6 +12,7 @@ module CryptoDepth.Internal.DPrelude
 , printf
 , fail
 , show'
+, (NE.<|)
 )
 where
 
@@ -27,6 +28,7 @@ import           Data.Vector  (Vector)
 import Text.Printf
 import Data.EitherR (fmapL)
 import qualified Data.HashMap.Strict as Map
+import qualified Data.List.NonEmpty as NE
 
 type Map = Map.HashMap
 
