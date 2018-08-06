@@ -10,6 +10,7 @@ module CryptoDepth
 , groupVenues
 , Sym
 , ExchangePath(..)
+, SymPathInfo
 )
 where
 
@@ -24,6 +25,8 @@ import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.HashMap.Strict as Map
 import qualified Money
 
+
+type SymPathInfo numeraire = Map Sym ([PathInfo numeraire], [PathInfo numeraire])
 
 -- | Ignore the liquidity of these non-cryptos
 nonCryptos :: [Sym]
