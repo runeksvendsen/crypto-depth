@@ -22,7 +22,7 @@ data PathInfo numeraire =
     PathInfo
     { piQty     :: Money.Dense numeraire
     , piPath    :: NonEmpty SymVenue
-    }
+    } deriving (Show, Eq)
 
 -- | Exchange by slippage through multiple orderbook sides
 slippageExchangeMulti
