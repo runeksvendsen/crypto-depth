@@ -28,7 +28,7 @@ data PathInfo numeraire =
 slippageExchangeMulti
     :: forall numeraire.
        KnownSymbol numeraire
-    => Rational                                 -- ^ Slippage, in percent
+    => Slippage                                 -- ^ Slippage, in percent
     -> NonEmpty SomeEdgeVenue                   -- ^ Orderbook sides to go through
     -> Either String (Sym, PathInfo numeraire)  -- ^ (Source symbol, amount in target currency)
 slippageExchangeMulti slip sides = do
@@ -49,11 +49,11 @@ slippageExchangeMulti slip sides = do
     exchBuySide bs =
         case sameSymbol (Proxy :: Proxy quote) (Proxy :: Proxy numeraire) of
             Just Refl -> Right $ ( toS $ symbolVal (Proxy :: Proxy base)
-                                 , Match.resQuoteQty $ Match.slippageSell bs slip)
+                                 , Match.resQuoteQty $ Match.slippageSell bs (toRational slip))
             Nothing   ->
                 case sameSymbol (Proxy :: Proxy base) (Proxy :: Proxy numeraire) of
                     Just Refl -> Right $ ( toS $ symbolVal (Proxy :: Proxy quote),
-                                           Match.resBaseQty $ Match.slippageSell bs slip)
+                                           Match.resBaseQty $ Match.slippageSell bs (toRational slip))
                     Nothing   -> Left  $ conversionErr (show $ Edge bs)
 
 piTotalQty :: [PathInfo numeraire] -> Money.Dense numeraire

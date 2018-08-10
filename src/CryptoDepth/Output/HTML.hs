@@ -17,7 +17,7 @@ import System.IO                        (withFile)
 
 htmlOut
     :: KnownSymbol numeraire
-    => Rational
+    => CD.Slippage
     -> Map CD.Sym ([CD.PathInfo numeraire], [CD.PathInfo numeraire])
     -> IO ()
 htmlOut slipPct symVolumes = do

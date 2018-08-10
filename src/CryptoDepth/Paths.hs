@@ -31,7 +31,7 @@ type DepthGraph = G.Gr Sym DepthEdge
 
 buildDepthGraph
     :: KnownSymbol numeraire
-    => Rational
+    => Slippage
     -> RateMap numeraire
     -> [ABook]
     -> (DepthGraph, NodeMap)
@@ -40,7 +40,7 @@ buildDepthGraph slipPct rateMap books =
 
 toDepthEdges
     :: KnownSymbol numeraire
-    => Rational
+    => Slippage
     -> RateMap numeraire
     -> NodeMap
     -> ABook
@@ -55,7 +55,7 @@ toEdge
        (KnownSymbol base, KnownSymbol quote, KnownSymbol numeraire)
     => RateMap numeraire
     -> NodeMap
-    -> Rational
+    -> Slippage
     -> (Venue, BuySide base quote)
     -> G.LEdge DepthEdge
 toEdge rateMap symbolMap slipPct (venue, buySide) =
@@ -69,7 +69,7 @@ toEdge rateMap symbolMap slipPct (venue, buySide) =
     pairSell = Pair (Just $ SomeEdgeVenue (fromBuySide buySide, venue))
                     (mkEdgeWeight sellQty)
     sellQty = usdQuoteQty quoteSym rateMap $
-        Match.slippageSell buySide slipPct
+        Match.slippageSell buySide (toRational slipPct)
 
 mkEdgeWeight :: Money.Dense numeraire -> Rational
 mkEdgeWeight dense = let qty = toRational dense in
@@ -100,7 +100,7 @@ usdQuoteQty quoteSym rateMap matchRes =
 -- | Paths from given symbol to another given symbol in descending order of liquidity
 liquidPaths
     :: KnownSymbol numeraire
-    => Rational
+    => Slippage
     -> RateMap numeraire
     -> NodeMap
     -> DepthGraph
@@ -117,7 +117,7 @@ liquidPaths slip rm nm dg f =
 liquidPathsR
     :: KnownSymbol numeraire
     => [[G.LNode DepthEdge]]    -- ^ Accumulator
-    -> Rational
+    -> Slippage
     -> RateMap numeraire
     -> NodeMap
     -> DepthGraph
@@ -135,7 +135,7 @@ liquidPathsR currPaths slipPct rateMap nodeMap g from to =
 
 pathEdges
     :: KnownSymbol numeraire
-    => Rational
+    => Slippage
     -> RateMap numeraire
     -> NodeMap
     -> [G.LNode DepthEdge]

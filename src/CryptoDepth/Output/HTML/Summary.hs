@@ -9,7 +9,7 @@ where
 import CryptoDepth.Internal.DPrelude
 import CryptoDepth.Output.HTML.Common
 import qualified CryptoDepth as CD
-import CryptoDepth                (LiquidPaths(..))
+import CryptoDepth                (LiquidPaths(..), Slippage)
 import qualified Money
 import Lucid
 import System.IO (stdout, hSetEncoding, utf8)
@@ -19,13 +19,13 @@ import Data.Text.Lazy.IO as L
 summary
   :: forall numeraire.
      KnownSymbol numeraire
-  => Rational
+  => Slippage
   -> [(CD.Sym, Money.Dense numeraire, Money.Dense numeraire)]
   -> Html ()
 summary slipPct symVolumes =
   htmlDoc titleStr (summaryTable symVolumes)
   where
-  titleStr = printf "Sell/buy volume at %s%% slippage" (showRat slipPct) :: String
+  titleStr = printf "Sell/buy volume at %s%% slippage" (showRat $ toRational slipPct) :: String
 
 summaryTable
     :: forall numeraire.

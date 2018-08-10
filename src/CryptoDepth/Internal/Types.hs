@@ -23,6 +23,10 @@ type NodeMap = Map.HashMap Sym Int      -- ^ Map a currency symbol to a graph no
 type Sym = Text                         -- ^ A currency symbol, e.g. "USD", "EUR", "BTC", "ETH" etc.
 type Venue = Text
 
+-- | Slippage in percent
+newtype Slippage = Slippage {slippage :: Rational}
+    deriving (Enum, Eq, Fractional, Num, Ord, Read, Real, RealFrac, Show)
+
 data Pair v t = Pair { pFst :: v, pSnd :: t }
     deriving Eq
 

@@ -31,8 +31,8 @@ type PathInfoNumr = CryptoDepth.PathInfo Numeraire
 numObLimit :: Int
 numObLimit = 30
 
-slippagePercent :: Rational
-slippagePercent = 5 % 1
+slippagePercent :: Slippage
+slippagePercent = fromRational (5 % 1)
 
 
 logLevel = Log.LevelDebug

@@ -11,6 +11,7 @@ module CryptoDepth
 , Sym
 , ExchangePath(..)
 , SymPathInfo
+, Slippage
 )
 where
 
@@ -46,7 +47,7 @@ totals =
 
 allPathsInfos
     :: KnownSymbol numeraire
-    => Rational
+    => Slippage
     -> Map Sym (LiquidPaths numeraire)
     -> Either String (Map Sym ([PathInfo numeraire], [PathInfo numeraire]))
 allPathsInfos slipPct lpMap =
@@ -54,7 +55,7 @@ allPathsInfos slipPct lpMap =
 
 pathInfos
     :: KnownSymbol numeraire
-    => Rational
+    => Slippage
     -> (Sym, LiquidPaths numeraire)
     -> Either String (Sym, ([PathInfo numeraire], [PathInfo numeraire]))
 pathInfos slipPct (mapSym, LiquidPaths buyPaths sellPaths) = do
@@ -73,7 +74,7 @@ pathInfos slipPct (mapSym, LiquidPaths buyPaths sellPaths) = do
 symLiquidPaths
     :: forall numeraire.
        KnownSymbol numeraire
-    => Rational                             -- ^ Measure how much can be bought/sold while, at most, moving the price by this percentage
+    => Slippage                             -- ^ Measure how much can be bought/sold while, at most, moving the price by this percentage
     -> [Paths.ABook]
     -> Map Sym (LiquidPaths numeraire)  -- ^ For each crypto, all the paths that the given crypto can be bought/sold through
 symLiquidPaths slipPct books =
@@ -102,7 +103,7 @@ buySellPath
     => Rate.RateMap numeraire
     -> Paths.NodeMap
     -> Paths.DepthGraph
-    -> Rational                                                         -- ^ Slippage (in percent)
+    -> Slippage                                                         -- ^ Slippage (in percent)
     -> Sym                                                              -- ^ Cryptocurrency symbol
     -> LiquidPaths numeraire
 buySellPath rateMap nodeMap depthGraph slipPct sym =
