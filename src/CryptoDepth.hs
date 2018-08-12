@@ -9,6 +9,7 @@ module CryptoDepth
 , Exchange.PathInfo(..)
 , groupVenues
 , Sym
+, Map
 , ExchangePath(..)
 , SymPathInfo
 , Slippage

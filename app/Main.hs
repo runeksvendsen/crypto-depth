@@ -1,7 +1,13 @@
 module Main where
 
-import CryptoDepth.Internal.DPrelude
-import CryptoDepth.Internal.Types
+import Prelude
+import Data.Proxy (Proxy(..))
+import Data.Ratio   ((%))
+import GHC.TypeLits (symbolVal)
+import Text.Printf (printf)
+import Control.Monad.Trans.Class (lift)
+import qualified Data.Text as T
+
 import qualified CryptoDepth
 import qualified CryptoDepth.Paths as Paths
 import qualified CryptoDepth.Output.CLI as CLI
@@ -31,7 +37,7 @@ type PathInfoNumr = CryptoDepth.PathInfo Numeraire
 numObLimit :: Int
 numObLimit = 30
 
-slippagePercent :: Slippage
+slippagePercent :: CryptoDepth.Slippage
 slippagePercent = fromRational (5 % 1)
 
 
@@ -44,7 +50,7 @@ main = withLogging $ do
     let throwErrM ioA = ioA >>= either (error . show) return
     resMap <- throwErrM $ AppM.runAppM man maxRetries $
         CryptoDepth.symLiquidPaths slippagePercent <$> allBooks
-    let res :: Map Sym ([PathInfoNumr], [PathInfoNumr]) =
+    let res :: CryptoDepth.Map CryptoDepth.Sym ([PathInfoNumr], [PathInfoNumr]) =
             either error id $ CryptoDepth.allPathsInfos slippagePercent resMap
     HTML.htmlOut slippagePercent res
 
@@ -68,10 +74,10 @@ fetchVenueBooks (AnyVenue p) = do
     allMarkets :: [Market venue] <- EnumMarkets.marketList p
     let marketName = symbolVal (Proxy :: Proxy venue)
         toABook (AnyBook ob) = Paths.ABook ob
-    lift . Log.log' $ toS (printf "%s: %d markets" marketName (length allMarkets) :: String)
+    lift . Log.log' $ T.pack (printf "%s: %d markets" marketName (length allMarkets) :: String)
     -- Begin DEBUG stuff
     let btcEth = ["BTC", "ETH"]
-        numeraire = toS $ symbolVal (Proxy :: Proxy Numeraire)
+        numeraire = T.pack $ symbolVal (Proxy :: Proxy Numeraire)
         numeraireLst = filter (\mkt -> miBase mkt `elem` btcEth && miQuote mkt == numeraire) allMarkets
         markets = take (numObLimit - length numeraireLst) (allMarkets \\ numeraireLst)
         marketList = numeraireLst ++ markets
