@@ -2,7 +2,7 @@
 
 ## What?
 
-Measure the liquidity (market depth) of all cryptocurrencies using the measure "*how much can I buy/sell of a given cryptocurrency while only moving the price **x**%*?" (where **x** is currently set to *5*). The more liquid a cryptocurrency is, the larger the quantity you can purchase/sell while only moving the price very little.
+Measure the liquidity (market depth) of all cryptocurrencies using the measure "*how much can I buy/sell of a given cryptocurrency while only moving the price **x**%*?" (where **x** is currently set to *5*). The more liquid a cryptocurrency is, the larger the quantity one can buy/sell while moving its price by some fixed percentage.
 
 ## How?
 
