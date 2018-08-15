@@ -15,9 +15,9 @@ import qualified Data.List.NonEmpty as NE
 
 
 crypto
-  :: forall numeraire.
+  :: forall numeraire slippage.
      KnownSymbol numeraire
-  => (CD.Sym, ([CD.PathInfo numeraire], [CD.PathInfo numeraire]))
+  => (CD.Sym, ([CD.PathInfo numeraire slippage], [CD.PathInfo numeraire slippage]))
   -> Html ()
 crypto (sym, (buyPaths, sellPaths)) =
   htmlDoc titleStr $
@@ -33,9 +33,9 @@ crypto (sym, (buyPaths, sellPaths)) =
     titleStr = printf "%s path info" sym
 
 cryptoTable
-    :: forall numeraire.
+    :: forall numeraire slippage.
        KnownSymbol numeraire
-    => [CD.PathInfo numeraire]
+    => [CD.PathInfo numeraire slippage]
     -> Html ()
 cryptoTable pathInfos = do
   let numeraire :: String
@@ -52,7 +52,7 @@ cryptoTable pathInfos = do
 cryptoRow
   :: KnownSymbol numeraire
   => Word
-  -> CD.PathInfo numeraire
+  -> CD.PathInfo numeraire slippage
   -> Html ()
 cryptoRow pos pi =
   tr_ $ do
@@ -61,9 +61,8 @@ cryptoRow pos pi =
     td_ (toHtml $ showDenseAmount $ CD.piQty pi)
 
 htmlPath
-    :: forall numeraire.
-       KnownSymbol numeraire
-    => CD.PathInfo numeraire
+    :: KnownSymbol numeraire
+    => CD.PathInfo numeraire slippage
     -> Html ()
 htmlPath CD.PathInfo{..} =
       void . sequence

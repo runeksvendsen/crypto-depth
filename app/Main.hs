@@ -30,16 +30,16 @@ import Data.List ((\\))
 
 -- | In which currency do we want to measure liquidity?
 type Numeraire = "USD"
-type PathInfoNumr = CryptoDepth.PathInfo Numeraire
+-- | A slippage of one twentieth is 5%
+type Slippage = CryptoDepth.OneDiv 20
+-- | NB: We use the same slippage for edge weights and pathInfos, but we don't have to
+type Graph = CryptoDepth.DepthGraph Numeraire Slippage
+type PathInfoNumr = CryptoDepth.PathInfo Numeraire Slippage
 
 -- DEBUG: How many orderbooks to fetch from each venue
 --  (not used in production)
 numObLimit :: Int
 numObLimit = 30
-
-slippagePercent :: CryptoDepth.Slippage
-slippagePercent = fromRational (5 % 1)
-
 
 logLevel = Log.LevelDebug
 maxRetries = 10
@@ -48,11 +48,13 @@ main :: IO ()
 main = withLogging $ do
     man <- HTTP.newManager HTTPS.tlsManagerSettings -- { HTTP.managerModifyRequest = logRequest }
     let throwErrM ioA = ioA >>= either (error . show) return
-    resMap <- throwErrM $ AppM.runAppM man maxRetries $
-        CryptoDepth.symLiquidPaths slippagePercent <$> allBooks
+    resMap <- throwErrM $ AppM.runAppM man maxRetries $ do
+        books <- allBooks
+        let (graph, rateMap, nodeMap) = CryptoDepth.buildDepthGraph books
+        return $ CryptoDepth.symLiquidPaths rateMap nodeMap (graph :: Graph)
     let res :: CryptoDepth.Map CryptoDepth.Sym ([PathInfoNumr], [PathInfoNumr]) =
-            either error id $ CryptoDepth.allPathsInfos slippagePercent resMap
-    HTML.htmlOut slippagePercent res
+            either error id $ CryptoDepth.allPathsInfos resMap
+    HTML.htmlOut res
 
 withLogging :: IO a -> IO a
 withLogging ioa = Log.withStderrLogging $ do

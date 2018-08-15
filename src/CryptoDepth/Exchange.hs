@@ -18,7 +18,7 @@ import qualified Money
 import qualified Data.Text as T
 
 
-data PathInfo numeraire =
+data PathInfo numeraire slippage =
     PathInfo
     { piQty     :: Money.Dense numeraire
     , piPath    :: NonEmpty SymVenue
@@ -26,16 +26,16 @@ data PathInfo numeraire =
 
 -- | Exchange by slippage through multiple orderbook sides
 slippageExchangeMulti
-    :: forall numeraire.
-       KnownSymbol numeraire
-    => Slippage                                 -- ^ Slippage, in percent
-    -> NonEmpty SomeEdgeVenue                   -- ^ Orderbook sides to go through
-    -> Either String (Sym, PathInfo numeraire)  -- ^ (Source symbol, amount in target currency)
-slippageExchangeMulti slip sides = do
+    :: forall numeraire slippage.
+       (KnownSymbol numeraire, KnownFraction slippage)
+    => NonEmpty SomeEdgeVenue                   -- ^ Orderbook sides to go through
+    -> Either String (Sym, PathInfo numeraire slippage)  -- ^ (Source symbol, amount in target currency)
+slippageExchangeMulti sides = do
     (SomeEdge (Edge edge), symVenues) <- composeSS sides
     (sym, qty) <- exchBuySide edge
     return $ (sym, PathInfo qty symVenues)
   where
+    slip = fracValPercent (Proxy :: Proxy slippage)
     conversionErr :: String -> String
     conversionErr sideStr =
         printf "'%s' target incompatible with %s"
@@ -49,12 +49,12 @@ slippageExchangeMulti slip sides = do
     exchBuySide bs =
         case sameSymbol (Proxy :: Proxy quote) (Proxy :: Proxy numeraire) of
             Just Refl -> Right $ ( toS $ symbolVal (Proxy :: Proxy base)
-                                 , Match.resQuoteQty $ Match.slippageSell bs (toRational slip))
+                                 , Match.resQuoteQty $ Match.slippageSell bs slip)
             Nothing   ->
                 case sameSymbol (Proxy :: Proxy base) (Proxy :: Proxy numeraire) of
                     Just Refl -> Right $ ( toS $ symbolVal (Proxy :: Proxy quote),
-                                           Match.resBaseQty $ Match.slippageSell bs (toRational slip))
+                                           Match.resBaseQty $ Match.slippageSell bs slip)
                     Nothing   -> Left  $ conversionErr (show $ Edge bs)
 
-piTotalQty :: [PathInfo numeraire] -> Money.Dense numeraire
+piTotalQty :: [PathInfo numeraire slippage] -> Money.Dense numeraire
 piTotalQty = sum . map piQty

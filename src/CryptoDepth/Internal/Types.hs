@@ -5,12 +5,14 @@
 {-# LANGUAGE TypeApplications #-}
 module CryptoDepth.Internal.Types
 ( module CryptoDepth.Internal.Types
+, module CryptoDepth.Internal.Types.OneDiv
 , module NE
 , Map.HashMap
 )
 where
 
 import CryptoDepth.Internal.DPrelude
+import CryptoDepth.Internal.Types.OneDiv
 import CryptoVenues.Types.Market
 import CryptoVenues.Fetch.MarketBook
 import OrderBook.Types
@@ -23,9 +25,14 @@ type NodeMap = Map.HashMap Sym Int      -- ^ Map a currency symbol to a graph no
 type Sym = Text                         -- ^ A currency symbol, e.g. "USD", "EUR", "BTC", "ETH" etc.
 type Venue = Text
 
--- | Slippage in percent
-newtype Slippage = Slippage {slippage :: Rational}
+-- | An edge weight that is the inverse of the quantity (with a unit of 'numeraire')
+--    that can be bought/sold at the specified 'slippage'
+--    ('OneDiv' is used to specify the slippage as a type)
+newtype Weight (numeraire :: Symbol) slippage = Weight Rational
     deriving (Enum, Eq, Fractional, Num, Ord, Read, Real, RealFrac, Show)
+
+fracValPercent :: KnownFraction frac => Proxy frac -> Rational
+fracValPercent = (100 *) . fracVal
 
 data Pair v t = Pair { pFst :: v, pSnd :: t }
     deriving Eq
@@ -184,7 +191,7 @@ sideEq a1 a2 =
                                 Just reflB -> Just (reflA, reflB)
 
 
-instance Show (Pair (Maybe SomeEdgeVenue) Rational) where
+instance Show (Pair (Maybe SomeEdgeVenue) (Weight numeraire slippage)) where
     show (Pair sideM rat) =
         printf "{%s %f}" (showSide sideM) (realToFrac rat :: Double)
       where

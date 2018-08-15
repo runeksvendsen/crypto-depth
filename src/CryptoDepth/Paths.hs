@@ -26,39 +26,36 @@ import qualified Data.Graph.Inductive.Internal.RootPath as G
 import qualified Money
 
 
-type DepthEdge = Pair (Maybe SomeEdgeVenue) Rational
-type DepthGraph = G.Gr Sym DepthEdge
+type DepthEdge numeraire slippage = Pair (Maybe SomeEdgeVenue) (Weight numeraire slippage)
+type DepthGraph numeraire slippage = G.Gr Sym (DepthEdge numeraire slippage)
 
 buildDepthGraph
-    :: KnownSymbol numeraire
-    => Slippage
-    -> RateMap numeraire
+    :: (KnownSymbol numeraire, KnownFraction slippage)
+    => RateMap numeraire
     -> [ABook]
-    -> (DepthGraph, NodeMap)
-buildDepthGraph slipPct rateMap books =
-    buildGraph (toDepthEdges slipPct rateMap) books
+    -> (DepthGraph numeraire slippage, NodeMap)
+buildDepthGraph rateMap =
+    buildGraph (toDepthEdges rateMap)
 
 toDepthEdges
-    :: KnownSymbol numeraire
-    => Slippage
-    -> RateMap numeraire
+    :: (KnownSymbol numeraire, KnownFraction slippage)
+    => RateMap numeraire
     -> NodeMap
     -> ABook
-    -> [G.LEdge DepthEdge]
-toDepthEdges slipPct rateMap symbolMap (ABook ob) =
-    [ toEdge rateMap symbolMap slipPct (obBuy ob)
-    , toEdge  rateMap symbolMap slipPct (OB.invert <$> obSell ob)
+    -> [G.LEdge (DepthEdge numeraire slippage)]
+toDepthEdges rateMap symbolMap (ABook ob) =
+    [ toEdge rateMap symbolMap (obBuy ob)
+    , toEdge  rateMap symbolMap (OB.invert <$> obSell ob)
     ]
 
 toEdge
-    :: forall base quote numeraire.
-       (KnownSymbol base, KnownSymbol quote, KnownSymbol numeraire)
+    :: forall base quote numeraire slippage.
+       (KnownSymbol base, KnownSymbol quote, KnownSymbol numeraire, KnownFraction slippage)
     => RateMap numeraire
     -> NodeMap
-    -> Slippage
     -> (Venue, BuySide base quote)
-    -> G.LEdge DepthEdge
-toEdge rateMap symbolMap slipPct (venue, buySide) =
+    -> G.LEdge (DepthEdge numeraire slippage)
+toEdge rateMap symbolMap (venue, buySide) =
     (baseNode, quoteNode, pairSell)
   where
     -- Node info
@@ -67,9 +64,21 @@ toEdge rateMap symbolMap slipPct (venue, buySide) =
     quoteNode = lookupSymFail quoteSym symbolMap
     -- Edge info
     pairSell = Pair (Just $ SomeEdgeVenue (fromBuySide buySide, venue))
-                    (mkEdgeWeight sellQty)
-    sellQty = usdQuoteQty quoteSym rateMap $
-        Match.slippageSell buySide (toRational slipPct)
+                    (edgeWeight quoteSym rateMap buySide)
+
+edgeWeight
+    :: forall numeraire base quote slippage.
+       (KnownSymbol numeraire, KnownSymbol base, KnownSymbol quote, KnownFraction slippage)
+    => Sym
+    -> RateMap numeraire
+    -> BuySide base quote
+    -> Weight numeraire slippage
+edgeWeight quoteSym rateMap buySide =
+    fromRational $ mkEdgeWeight denseQty
+  where
+    slipPct = fracValPercent (Proxy :: Proxy slippage)
+    denseQty = usdQuoteQty quoteSym rateMap $
+        Match.slippageSell buySide slipPct
 
 mkEdgeWeight :: Money.Dense numeraire -> Rational
 mkEdgeWeight dense = let qty = toRational dense in
@@ -99,55 +108,55 @@ usdQuoteQty quoteSym rateMap matchRes =
 
 -- | Paths from given symbol to another given symbol in descending order of liquidity
 liquidPaths
-    :: KnownSymbol numeraire
-    => Slippage
-    -> RateMap numeraire
+    :: (KnownSymbol numeraire, KnownFraction slippage)
+    => RateMap numeraire
     -> NodeMap
-    -> DepthGraph
+    -> DepthGraph numeraire slippage
     -> G.Node          -- ^ From
     -> G.Node          -- ^ To
     -> [NonEmpty SomeEdgeVenue] -- ^ List of From->To paths in descending order of liquidity
-liquidPaths slip rm nm dg f =
+liquidPaths rm nm dg f =
     toNonEmpty . map catMaybes . map (map (pFst . snd))
-        . reverse . liquidPathsR [[]] slip rm nm dg f
+        . reverse . liquidPathsR [[]] rm nm dg f
   where
     toNonEmpty = map (nonEmptyErr . nonEmpty) . filter (not . null)
     nonEmptyErr = fromMaybe (error "non-empty list is empty")
 
 liquidPathsR
-    :: KnownSymbol numeraire
-    => [[G.LNode DepthEdge]]    -- ^ Accumulator
-    -> Slippage
+    :: forall numeraire slippage.
+       (KnownSymbol numeraire, KnownFraction slippage)
+    => [[G.LNode (DepthEdge numeraire slippage)]]    -- ^ Accumulator
     -> RateMap numeraire
     -> NodeMap
-    -> DepthGraph
+    -> DepthGraph numeraire slippage
     -> G.Node                   -- ^ From
     -> G.Node                   -- ^ To
-    -> [[G.LNode DepthEdge]]    -- ^ List of From->To paths in ascending order of liquidity
-liquidPathsR currPaths slipPct rateMap nodeMap g from to =
+    -> [[G.LNode (DepthEdge numeraire slippage)]]    -- ^ List of From->To paths in ascending order of liquidity
+liquidPathsR currPaths rateMap nodeMap g from to =
     if null mostLiquidPath
         then currPaths
-        else liquidPathsR (mostLiquidPath : currPaths) slipPct rateMap nodeMap newGraph from to
+        else liquidPathsR (mostLiquidPath : currPaths) rateMap nodeMap newGraph from to
   where
-    mostLiquidPath :: [G.LNode DepthEdge]
+    mostLiquidPath :: [G.LNode (DepthEdge numeraire slippage)]
     mostLiquidPath = G.unLPath . G.getLPath to . G.spTree from $ g
-    newGraph = delAllLEdges (pathEdges slipPct rateMap nodeMap mostLiquidPath) g
+    newGraph = delAllLEdges (pathEdges rateMap nodeMap mostLiquidPath) g
 
 pathEdges
-    :: KnownSymbol numeraire
-    => Slippage
-    -> RateMap numeraire
+    :: forall numeraire slippage.
+       (KnownSymbol numeraire, KnownFraction slippage)
+    => RateMap numeraire
     -> NodeMap
-    -> [G.LNode DepthEdge]
-    -> [G.LEdge DepthEdge]
-pathEdges slipPct rateMap nodeMap =
+    -> [G.LNode (DepthEdge numeraire slippage)]
+    -> [G.LEdge (DepthEdge numeraire slippage)]
+pathEdges rateMap nodeMap =
     map fromSomeEdgeVenue . depthEdgeBooks
   where
+    fromSomeEdgeVenue :: SomeEdgeVenue -> G.LEdge (DepthEdge numeraire slippage)
     fromSomeEdgeVenue (SomeEdgeVenue (SomeEdge (Edge bs), v)) =
-        toEdge rateMap nodeMap slipPct (v,bs)
+        toEdge rateMap nodeMap (v,bs)
 
 depthEdgeBooks
-    :: [G.LNode DepthEdge]
+    :: [G.LNode (DepthEdge numeraire slippage)]
     -> [SomeEdgeVenue]
 depthEdgeBooks =
      catMaybes . map pFst . map snd
