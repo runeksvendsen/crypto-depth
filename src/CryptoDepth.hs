@@ -58,9 +58,11 @@ totals =
 allPathsInfos
     :: (KnownSymbol numeraire, KnownFraction slippageEdgeWeight, KnownFraction slippage)
     => Map Sym (LiquidPaths numeraire slippageEdgeWeight)
-    -> Either String (Map Sym ([PathInfo numeraire slippage], [PathInfo numeraire slippage]))
-allPathsInfos lpMap =
+    -> Map Sym ([PathInfo numeraire slippage], [PathInfo numeraire slippage])
+allPathsInfos lpMap = handleBug $
     Map.fromList <$> traverse pathInfos (Map.toList lpMap)
+ where
+    handleBug = either (\str -> error $ "BUG: " ++ str) id
 
 pathInfos
     :: (KnownSymbol numeraire, KnownFraction slippageEdgeWeight, KnownFraction slippage)

@@ -53,7 +53,7 @@ main = withLogging $ do
         let (graph, rateMap, nodeMap) = CryptoDepth.buildDepthGraph books
         return $ CryptoDepth.symLiquidPaths rateMap nodeMap (graph :: Graph)
     let res :: CryptoDepth.Map CryptoDepth.Sym ([PathInfoNumr], [PathInfoNumr]) =
-            either error id $ CryptoDepth.allPathsInfos resMap
+            CryptoDepth.allPathsInfos resMap
     HTML.htmlOut res
 
 withLogging :: IO a -> IO a
