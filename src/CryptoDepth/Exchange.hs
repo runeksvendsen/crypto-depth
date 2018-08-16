@@ -18,18 +18,25 @@ import qualified Money
 import qualified Data.Text as T
 
 
+-- | A quantity (measured in the 'numeraire' currency)
+--    that can be bought/sold through a given path
+--    (sequence of markets) while, at most, moving
+--    the price by 'slippage'
 data PathInfo numeraire slippage =
     PathInfo
-    { piQty     :: Money.Dense numeraire
-    , piPath    :: NonEmpty SymVenue
+    { piQty     :: Money.Dense numeraire    -- ^ Quantity at given slippage
+    , piPath    :: NonEmpty SymVenue        -- ^ Path (markets moved through)
     } deriving (Show, Eq)
 
 -- | Exchange by slippage through multiple orderbook sides
 slippageExchangeMulti
     :: forall numeraire slippage.
        (KnownSymbol numeraire, KnownFraction slippage)
-    => NonEmpty SomeEdgeVenue                   -- ^ Orderbook sides to go through
-    -> Either String (Sym, PathInfo numeraire slippage)  -- ^ (Source symbol, amount in target currency)
+    -- | Orderbook sides to go through
+    => NonEmpty SomeEdgeVenue
+    -- | (Source symbol, amount in target currency)
+    --   NB: A 'Left' value indicates a bug in the producer of the 'SomeEdgeVenue's
+    -> Either String (Sym, PathInfo numeraire slippage)
 slippageExchangeMulti sides = do
     (SomeEdge (Edge edge), symVenues) <- composeSS sides
     (sym, qty) <- exchBuySide edge
