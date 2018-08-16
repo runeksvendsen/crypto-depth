@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ConstraintKinds #-}
 module CryptoDepth.Internal.Types.OneDiv
 ( -- * Type
   OneDiv
@@ -11,9 +13,10 @@ module CryptoDepth.Internal.Types.OneDiv
 where
 
 import Prelude              (Show(show), const, (.), ($))
-import GHC.TypeLits         (Nat, KnownNat, natVal)
+import GHC.TypeLits         (Nat, KnownNat, CmpNat, natVal)
 import Data.Ratio           (Rational, (%))
 import Data.Proxy           (Proxy(Proxy))
+import Data.Ord             (Ordering(LT))
 
 
 -- | A type-level fraction whose numerator is 1 --
@@ -25,8 +28,11 @@ data OneDiv (denominator :: Nat)
 class KnownFraction frac where
     fracVal :: Proxy frac -> Rational
 
-instance KnownNat denominator => KnownFraction (OneDiv denominator) where
+type KnownNonZeroNat denominator =
+    (KnownNat denominator, CmpNat 0 denominator ~ 'LT)
+
+instance KnownNonZeroNat denominator => KnownFraction (OneDiv denominator) where
     fracVal = const $ 1 % natVal (Proxy :: Proxy denominator)
 
-instance KnownNat denominator => Show (OneDiv denominator) where
+instance KnownNonZeroNat denominator => Show (OneDiv denominator) where
     show = const . show $ fracVal (Proxy :: Proxy (OneDiv denominator))
