@@ -14,7 +14,7 @@ module CryptoDepth
   -- * Helper functions
 , totals
 , groupVenues
-  -- * Relate types/classes
+  -- * Related types/classes
 , Sym
 , Map
 , ExchangePath(..)
