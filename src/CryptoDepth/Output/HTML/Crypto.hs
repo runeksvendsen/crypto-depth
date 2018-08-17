@@ -58,7 +58,7 @@ cryptoRow pos pi =
   tr_ $ do
     th_ [ scope_ "row" ] $ toHtml (show pos)
     td_ (htmlPath pi)
-    td_ (toHtml $ showDenseAmount $ CD.piQty pi)
+    td_ (toHtml $ showDenseAmount . CD.unTagged $ CD.piQty pi)
 
 htmlPath
     :: KnownSymbol numeraire

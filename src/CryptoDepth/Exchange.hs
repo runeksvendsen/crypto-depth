@@ -7,6 +7,7 @@ module CryptoDepth.Exchange
 ( slippageExchangeMulti
 , PathInfo(..)
 , piTotalQty
+, Tagged(..)
 )
 where
 
@@ -16,6 +17,7 @@ import OrderBook.Types              (BuySide, SellSide)
 import qualified OrderBook.Matching as Match
 import qualified Money
 import qualified Data.Text as T
+import Data.Tagged                  (Tagged(..))
 
 
 -- | A quantity (measured in the 'numeraire' currency)
@@ -24,7 +26,7 @@ import qualified Data.Text as T
 --    the price by 'slippage'
 data PathInfo numeraire slippage =
     PathInfo
-    { piQty     :: Money.Dense numeraire    -- ^ Quantity at given slippage
+    { piQty     :: Tagged slippage (Money.Dense numeraire)    -- ^ Quantity at given slippage
     , piPath    :: NonEmpty SymVenue        -- ^ Path (markets moved through)
     } deriving (Show, Eq)
 
@@ -40,7 +42,7 @@ slippageExchangeMulti
 slippageExchangeMulti sides = do
     (SomeEdge (Edge edge), symVenues) <- composeSS sides
     (sym, qty) <- exchBuySide edge
-    return $ (sym, PathInfo qty symVenues)
+    return $ (sym, PathInfo (Tagged qty) symVenues)
   where
     slip = fracValPercent (Proxy :: Proxy slippage)
     conversionErr :: String -> String
@@ -64,4 +66,4 @@ slippageExchangeMulti sides = do
                     Nothing   -> Left  $ conversionErr (show $ Edge bs)
 
 piTotalQty :: [PathInfo numeraire slippage] -> Money.Dense numeraire
-piTotalQty = sum . map piQty
+piTotalQty = sum . map (unTagged . piQty)

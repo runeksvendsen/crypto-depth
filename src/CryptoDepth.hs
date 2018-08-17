@@ -22,6 +22,8 @@ module CryptoDepth
 , OneDiv
 , KnownFraction(..)
 , fracValPercent
+  -- * Re-exports
+, Exchange.Tagged(..)
 )
 where
 
