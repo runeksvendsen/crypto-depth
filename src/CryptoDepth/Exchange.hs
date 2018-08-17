@@ -8,11 +8,13 @@ module CryptoDepth.Exchange
 , PathInfo(..)
 , piTotalQty
 , Tagged(..)
+, pathQty
 )
 where
 
 import CryptoDepth.Internal.DPrelude
 import CryptoDepth.Internal.Types
+import CryptoDepth.Internal.Types.EdgePath
 import OrderBook.Types              (BuySide, SellSide)
 import qualified OrderBook.Matching as Match
 import qualified Money
@@ -67,3 +69,8 @@ slippageExchangeMulti (EdgePath sides) = do
 
 piTotalQty :: [PathInfo numeraire slippage] -> Money.Dense numeraire
 piTotalQty = sum . map (unTagged . piQty)
+
+pathQty :: (KnownSymbol numeraire, KnownFraction slippage)
+        => EdgePath numeraire
+        -> Tagged slippage (Money.Dense numeraire)
+pathQty = piQty . snd . throwBug . slippageExchangeMulti

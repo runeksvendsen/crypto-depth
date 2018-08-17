@@ -13,6 +13,7 @@ module CryptoDepth.Internal.DPrelude
 , fail
 , show'
 , (NE.<|)
+, throwBug
 )
 where
 
@@ -40,3 +41,6 @@ sameSym a b = isJust (sameSymbol a b)
 
 instance KnownSymbol sym => StringConv (Proxy sym) Text where
     strConv _ _ = toS $ symbolVal (Proxy :: Proxy sym)
+
+throwBug :: Either String a -> a
+throwBug = either (\str -> error $ "BUG: " ++ str) id

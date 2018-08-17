@@ -6,12 +6,14 @@
 module CryptoDepth.Paths
 ( module CryptoDepth.Internal.Types
 , module CryptoDepth.Paths
+, module CryptoDepth.Internal.Types.EdgePath
 )
 where
 
 import CryptoDepth.Internal.DPrelude hiding (head)
 import CryptoDepth.Internal.Util
 import CryptoDepth.Internal.Types
+import CryptoDepth.Internal.Types.EdgePath
 import CryptoDepth.BuildGraph
 import CryptoDepth.RateMap
 

@@ -22,7 +22,12 @@ module CryptoDepth
 , OneDiv
 , KnownFraction(..)
 , fracValPercent
-, EdgePath
+  -- * EdgePath-related
+, Paths.EdgePath
+, Paths.srcSym
+, Paths.dstSym
+, Paths.pathDescr
+, Exchange.pathQty
   -- * Re-exports
 , Exchange.Tagged(..)
 )
@@ -62,10 +67,8 @@ allPathsInfos
     :: (KnownSymbol numeraire, KnownFraction slippageEdgeWeight, KnownFraction slippage)
     => Map Sym (LiquidPaths numeraire slippageEdgeWeight)
     -> Map Sym ([PathInfo numeraire slippage], [PathInfo numeraire slippage])
-allPathsInfos lpMap = handleBug $
+allPathsInfos lpMap = throwBug $
     Map.fromList <$> traverse pathInfos (Map.toList lpMap)
- where
-    handleBug = either (\str -> error $ "BUG: " ++ str) id
 
 pathInfos
     :: (KnownSymbol numeraire, KnownFraction slippageEdgeWeight, KnownFraction slippage)
@@ -116,8 +119,8 @@ symLiquidPaths rateMap nodeMap depthGraph =
 --    at the specified "slippage".
 data LiquidPaths (numeraire :: Symbol) slippage =
     LiquidPaths
-    { lpBuy  :: [EdgePath numeraire]
-    , lpSell :: [EdgePath numeraire]
+    { lpBuy  :: [Paths.EdgePath numeraire]
+    , lpSell :: [Paths.EdgePath numeraire]
     }
 
 -- | Get buy and sell paths -- in descending order of liquidity at the given slippage --
@@ -141,6 +144,6 @@ buySellPath rateMap nodeMap depthGraph sym =
     -- Util
     pathVolumes :: G.Node
                 -> G.Node
-                -> [EdgePath numeraire]
+                -> [Paths.EdgePath numeraire]
     pathVolumes from to =
         Paths.liquidPaths rateMap nodeMap depthGraph from to

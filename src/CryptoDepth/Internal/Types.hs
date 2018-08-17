@@ -98,12 +98,6 @@ newtype SomeEdgeVenue = SomeEdgeVenue {someEdgeVenue :: (SomeEdge,Venue)}
 toSomeEdge :: SomeEdgeVenue -> SomeEdge
 toSomeEdge (SomeEdgeVenue tuple) = fst tuple
 
--- | A path through one or more markets.
---   Either starts or ends in "numeraire".
-newtype EdgePath (numeraire :: Symbol) =
-    EdgePath { someEdgeVenueList :: NonEmpty SomeEdgeVenue }
-        deriving (Eq, Show, Generic)
-
 newtype BuySideVenue  base quote = BuySideVenue  (BuySide base quote , Venue)
 newtype SellSideVenue base quote = SellSideVenue (SellSide base quote, Venue)
 
