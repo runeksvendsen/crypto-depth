@@ -35,11 +35,11 @@ slippageExchangeMulti
     :: forall numeraire slippage.
        (KnownSymbol numeraire, KnownFraction slippage)
     -- | Orderbook sides to go through
-    => NonEmpty SomeEdgeVenue
+    => EdgePath numeraire
     -- | (Source symbol, amount in target currency)
     --   NB: A 'Left' value indicates a bug in the producer of the 'SomeEdgeVenue's
     -> Either String (Sym, PathInfo numeraire slippage)
-slippageExchangeMulti sides = do
+slippageExchangeMulti (EdgePath sides) = do
     (SomeEdge (Edge edge), symVenues) <- composeSS sides
     (sym, qty) <- exchBuySide edge
     return $ (sym, PathInfo (Tagged qty) symVenues)

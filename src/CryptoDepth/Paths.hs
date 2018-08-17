@@ -114,8 +114,9 @@ liquidPaths
     -> DepthGraph numeraire slippage
     -> G.Node          -- ^ From
     -> G.Node          -- ^ To
-    -> [NonEmpty SomeEdgeVenue] -- ^ List of From->To paths in descending order of liquidity
+    -> [EdgePath numeraire] -- ^ List of From->To paths in descending order of liquidity
 liquidPaths rm nm dg f =
+    map EdgePath .
     toNonEmpty . map catMaybes . map (map (pFst . snd))
         . reverse . liquidPathsR [[]] rm nm dg f
   where
