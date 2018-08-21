@@ -82,13 +82,11 @@ toRateMap g nodeMap =
       foldr (insertRate . toKeyVal) Map.empty
     $ map (either error id)             -- A "Left" value indicates a bug, so we throw an error
     $ map (toRate . map snd)
-    $ allPaths (symNode numeraire) g    -- Find all paths with startNode=numeraire
+    $ allPaths (lookupSymFail numeraire nodeMap) g    -- Find all paths with startNode=numeraire
   where
     toKeyVal rateFrom = (rateFromDst rateFrom, rateFrom)
     numeraire = toS $ symbolVal (Proxy :: Proxy numeraire)
-    insertRate (sym, rate) rateMap = Map.insert sym rate rateMap
-    symNode sym = fromMaybe (error $ show sym ++  " not found in map") $
-        Map.lookup sym nodeMap
+    insertRate = uncurry Map.insert
 
 toRateEdges
     :: NodeMap
