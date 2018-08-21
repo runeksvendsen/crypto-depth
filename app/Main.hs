@@ -16,7 +16,6 @@ import qualified CryptoDepth.Output.HTML as HTML
 import OrderBook.Types              (AnyBook(..))
 import CryptoVenues.Types.Market
 import CryptoVenues.Fetch.MarketBook
-import qualified CryptoVenues.Fetch.Throttle as Throttle
 import qualified CryptoVenues.Fetch.EnumMarkets as EnumMarkets
 import qualified CryptoVenues.Venues as Venues
 import qualified CryptoVenues.Types.AppM as AppM
@@ -84,4 +83,4 @@ fetchVenueBooks (AnyVenue p) = do
         markets = take (numObLimit - length numeraireLst) (allMarkets \\ numeraireLst)
         marketList = numeraireLst ++ markets
     -- End DEBUG stuff
-    map toABook <$> Throttle.fetchRateLimited marketList
+    map toABook <$> mapM fetchMarketBook marketList
