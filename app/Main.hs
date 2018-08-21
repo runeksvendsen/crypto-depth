@@ -9,7 +9,6 @@ import Control.Monad.Trans.Class (lift)
 import qualified Data.Text as T
 
 import qualified CryptoDepth
-import qualified CryptoDepth.Paths as Paths
 import qualified CryptoDepth.Output.CLI as CLI
 import qualified CryptoDepth.Output.HTML as HTML
 
@@ -62,7 +61,7 @@ withLogging ioa = Log.withStderrLogging $ do
     ioa
 
 -- | Fetch books, in parallel, from all venues
-allBooks :: AppM.AppM IO [Paths.ABook]
+allBooks :: AppM.AppM IO [CryptoDepth.ABook]
 allBooks =
    concat <$> Par.forM Venues.allVenues fetchVenueBooks
 
@@ -70,11 +69,10 @@ allBooks =
 --  DEBUG: limit number of fetched books to 'numObLimit'
 fetchVenueBooks
    :: AnyVenue
-   -> AppM.AppM IO [Paths.ABook]
+   -> AppM.AppM IO [CryptoDepth.ABook]
 fetchVenueBooks (AnyVenue p) = do
     allMarkets :: [Market venue] <- EnumMarkets.marketList p
     let marketName = symbolVal (Proxy :: Proxy venue)
-        toABook (AnyBook ob) = Paths.ABook ob
     lift . Log.log' $ T.pack (printf "%s: %d markets" marketName (length allMarkets) :: String)
     -- Begin DEBUG stuff
     let btcEth = ["BTC", "ETH"]
@@ -83,4 +81,4 @@ fetchVenueBooks (AnyVenue p) = do
         markets = take (numObLimit - length numeraireLst) (allMarkets \\ numeraireLst)
         marketList = numeraireLst ++ markets
     -- End DEBUG stuff
-    map toABook <$> mapM fetchMarketBook marketList
+    map CryptoDepth.toABook <$> mapM fetchMarketBook marketList

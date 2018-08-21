@@ -15,6 +15,7 @@ module CryptoDepth
 , totals
 , groupVenues
   -- * Related types/classes
+, ABook, toABook
 , Sym
 , Map
 , ExchangePath(..)
