@@ -9,6 +9,7 @@ import Control.Monad.Trans.Class (lift)
 import qualified Data.Text as T
 
 import qualified CryptoDepth
+import qualified CryptoDepth.Fetch as Fetch
 import qualified CryptoDepth.Output.CLI as CLI
 import qualified CryptoDepth.Output.HTML as HTML
 
@@ -36,7 +37,7 @@ type PathInfoNumr = CryptoDepth.PathInfo Numeraire Slippage
 
 -- DEBUG: How many orderbooks to fetch from each venue
 --  (not used in production)
-numObLimit :: Int
+numObLimit :: Word
 numObLimit = 30
 
 logLevel = Log.LevelDebug
@@ -47,7 +48,7 @@ main = withLogging $ do
     man <- HTTP.newManager HTTPS.tlsManagerSettings -- { HTTP.managerModifyRequest = logRequest }
     let throwErrM ioA = ioA >>= either (error . show) return
     resMap <- throwErrM $ AppM.runAppM man maxRetries $ do
-        books <- allBooks
+        books <- Fetch.allBooks (Proxy :: Proxy Numeraire) numObLimit
         let (graph, rateMap, nodeMap) = CryptoDepth.buildDepthGraph books
         return $ CryptoDepth.symLiquidPaths rateMap nodeMap (graph :: Graph)
     let res :: CryptoDepth.Map CryptoDepth.Sym ([PathInfoNumr], [PathInfoNumr]) =
@@ -59,26 +60,3 @@ withLogging ioa = Log.withStderrLogging $ do
     Log.setLogLevel logLevel
     Log.setLogTimeFormat "%T.%3q"
     ioa
-
--- | Fetch books, in parallel, from all venues
-allBooks :: AppM.AppM IO [CryptoDepth.ABook]
-allBooks =
-   concat <$> Par.forM Venues.allVenues fetchVenueBooks
-
--- | Fetch books from a single venue
---  DEBUG: limit number of fetched books to 'numObLimit'
-fetchVenueBooks
-   :: AnyVenue
-   -> AppM.AppM IO [CryptoDepth.ABook]
-fetchVenueBooks (AnyVenue p) = do
-    allMarkets :: [Market venue] <- EnumMarkets.marketList p
-    let marketName = symbolVal (Proxy :: Proxy venue)
-    lift . Log.log' $ T.pack (printf "%s: %d markets" marketName (length allMarkets) :: String)
-    -- Begin DEBUG stuff
-    let btcEth = ["BTC", "ETH"]
-        numeraire = T.pack $ symbolVal (Proxy :: Proxy Numeraire)
-        numeraireLst = filter (\mkt -> miBase mkt `elem` btcEth && miQuote mkt == numeraire) allMarkets
-        markets = take (numObLimit - length numeraireLst) (allMarkets \\ numeraireLst)
-        marketList = numeraireLst ++ markets
-    -- End DEBUG stuff
-    map CryptoDepth.toABook <$> mapM fetchMarketBook marketList

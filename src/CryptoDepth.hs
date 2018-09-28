@@ -49,6 +49,7 @@ import qualified Money
 type SymPathInfo numeraire slippage = Map Sym ([PathInfo numeraire slippage], [PathInfo numeraire slippage])
 
 -- | Ignore the liquidity of these non-cryptos
+-- TODO: Is there a better way to enumerate all non-cryptos?
 nonCryptos :: [Sym]
 nonCryptos = ["USD", "EUR", "GBP", "JPY"]
 
