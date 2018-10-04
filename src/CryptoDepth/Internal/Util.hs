@@ -24,14 +24,6 @@ delAllLEdges
 delAllLEdges edges =
     flip (foldr G.delAllLEdge) edges
 
-lookupRateFail
-    :: (Hashable k, Eq k, Show k)
-    => k
-    -> Map.HashMap k a
-    -> a
-lookupRateFail sym rateMap = fromMaybe (error $ "rate not found: " ++ show sym) $
-    Map.lookup sym rateMap
-
 lookupSymFail
     :: (Hashable k, Eq k, Show k)
     => k

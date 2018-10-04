@@ -25,6 +25,18 @@ import qualified Data.HashMap.Strict as Map
 import qualified Money
 
 
+
+lookupRateFail
+    :: forall numeraire.
+       KnownSymbol numeraire
+    => Sym
+    -> RateMap numeraire
+    -> RateFrom numeraire
+lookupRateFail sym rateMap = fromMaybe (error $ numeraire ++ " rate not found: " ++ show sym) $
+    Map.lookup sym rateMap
+  where
+    numeraire = symbolVal (Proxy :: Proxy numeraire)
+
 type RateGraph = G.Gr Sym Money.SomeExchangeRate
 type RateMap numeraire = Map.HashMap Sym (RateFrom numeraire)
 
