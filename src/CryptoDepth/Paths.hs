@@ -79,7 +79,7 @@ edgeWeight quoteSym rateMap buySide =
     fromRational $ mkEdgeWeight denseQty
   where
     slipPct = fracValPercent (Proxy :: Proxy slippage)
-    denseQty = usdQuoteQty quoteSym rateMap $
+    denseQty = numeraireQuoteQty quoteSym rateMap $
         Match.slippageSell buySide slipPct
 
 mkEdgeWeight :: Money.Dense numeraire -> Rational
@@ -87,14 +87,17 @@ mkEdgeWeight dense = let qty = toRational dense in
     if qty == 0 then 1000000%1 else 1 / qty
     -- A zero-volume edge will get a weight as if it had 1e-6 volume
 
-usdQuoteQty
+-- | Convert an amount denomiated in "quoteSym" to a
+--    quantity denominated in "numeraire" (approximation).
+--   E.g. convert ETH to EUR.
+numeraireQuoteQty
     :: forall numeraire base quote.
        (KnownSymbol numeraire, KnownSymbol quote)
     => Sym
     -> RateMap numeraire
     -> Match.MatchResult base quote
     -> Money.Dense numeraire
-usdQuoteQty quoteSym rateMap matchRes =
+numeraireQuoteQty quoteSym rateMap matchRes =
     case lookupRateFail quoteSym rateMap of
         -- Invert 'RateFrom numeraire' in order to convert *to* 'numeraire'
         RateFrom erInv -> mkResult (Money.exchangeRateRecip erInv)
