@@ -68,14 +68,15 @@ toRate =
             Just Refl -> Right . RateFrom $ er2 Cat.. er1
             Nothing   -> Left $ "Incompatible from/to rates: " ++ show (er1,er2)
 
-buildRateMap :: KnownSymbol numeraire => [ABook] -> RateMap numeraire
+buildRateMap :: forall numeraire. KnownSymbol numeraire => [ABook] -> RateMap numeraire
 buildRateMap books =
     toRateMap (writeDot (graph :: RateGraph)) nodeMap
   where
     (graph, nodeMap) = buildGraph toRateEdges books
     writeDot g = unsafePerformIO $ do
         let dot = Dot.showDot (Dot.fglToDot g)
-        writeFile "rateMap.dot" (toS dot)
+            numeraire = symbolVal (Proxy :: Proxy numeraire)
+        writeFile ("rateMap-" ++ numeraire ++ ".dot") (toS dot)
         return g
 
 toRateMap
