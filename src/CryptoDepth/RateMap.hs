@@ -27,6 +27,18 @@ import qualified Money
 import qualified Data.Graph.Inductive.Dot   as Dot
 import System.IO.Unsafe                     (unsafePerformIO)
 
+
+lookupRateFail
+    :: forall numeraire.
+       KnownSymbol numeraire
+    => Sym
+    -> RateMap numeraire
+    -> RateFrom numeraire
+lookupRateFail sym rateMap = fromMaybe (error $ numeraire ++ " rate not found: " ++ show sym) $
+    Map.lookup sym rateMap
+  where
+    numeraire = symbolVal (Proxy :: Proxy numeraire)
+
 type RateGraph = G.Gr Sym Money.SomeExchangeRate
 type RateMap numeraire = Map.HashMap Sym (RateFrom numeraire)
 
