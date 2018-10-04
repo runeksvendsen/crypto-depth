@@ -23,7 +23,9 @@ import qualified Data.Graph.Inductive.Query.BFS as G
 import Data.List (init)
 import qualified Data.HashMap.Strict as Map
 import qualified Money
-
+-- DEBUG
+import qualified Data.Graph.Inductive.Dot   as Dot
+import System.IO.Unsafe                     (unsafePerformIO)
 
 type RateGraph = G.Gr Sym Money.SomeExchangeRate
 type RateMap numeraire = Map.HashMap Sym (RateFrom numeraire)
@@ -68,9 +70,13 @@ toRate =
 
 buildRateMap :: KnownSymbol numeraire => [ABook] -> RateMap numeraire
 buildRateMap books =
-    toRateMap (graph :: RateGraph) nodeMap
+    toRateMap (writeDot (graph :: RateGraph)) nodeMap
   where
     (graph, nodeMap) = buildGraph toRateEdges books
+    writeDot g = unsafePerformIO $ do
+        let dot = Dot.showDot (Dot.fglToDot g)
+        writeFile "rateMap.dot" (toS dot)
+        return g
 
 toRateMap
     :: forall gr numeraire.
