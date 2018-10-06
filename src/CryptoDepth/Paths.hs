@@ -46,40 +46,49 @@ toDepthEdges
     -> ABook
     -> [G.LEdge (DepthEdge numeraire slippage)]
 toDepthEdges rateMap symbolMap (ABook ob) =
-    [ toEdge rateMap symbolMap (obBuy ob)
-    , toEdge  rateMap symbolMap (OB.invert <$> obSell ob)
+    catMaybes
+    [ toEdgeM rateMap symbolMap (obBuy ob)
+    , toEdgeM  rateMap symbolMap (OB.invert <$> obSell ob)
     ]
 
-toEdge
+toEdgeM
     :: forall base quote numeraire slippage.
        (KnownSymbol base, KnownSymbol quote, KnownSymbol numeraire, KnownFraction slippage)
     => RateMap numeraire
     -> NodeMap
     -> (Venue, BuySide base quote)
-    -> G.LEdge (DepthEdge numeraire slippage)
-toEdge rateMap symbolMap (venue, buySide) =
-    (baseNode, quoteNode, pairSell)
+    -> Maybe (G.LEdge (DepthEdge numeraire slippage))
+toEdgeM rateMap symbolMap (venue, buySide) =
+    maybe logNotFound mkEdge pairSellM
   where
+    logNotFound = trace logString Nothing
+    logString = "DEBUG: Skipping edge " ++ showEdge buySide
+    mkEdge pairSell = Just (baseNode, quoteNode, pairSell)
     -- Node info
     quoteSym = sideQuote buySide
-    baseNode = lookupSymFail (sideBase buySide) symbolMap
+    baseSym  = sideBase buySide
+    baseNode = lookupSymFail baseSym symbolMap
     quoteNode = lookupSymFail quoteSym symbolMap
     -- Edge info
-    pairSell = Pair (Just $ SomeEdgeVenue (fromBuySide buySide, venue))
-                    (edgeWeight quoteSym rateMap buySide)
+    pairSellM = Pair (Just $ SomeEdgeVenue (fromBuySide buySide, venue))
+                 <$> (edgeWeightM quoteSym rateMap buySide :: Maybe (Weight numeraire slippage))
 
-edgeWeight
+showEdge :: (KnownSymbol base, KnownSymbol quote) => BuySide base quote -> String
+showEdge buySide =
+    toS (sideBase buySide) ++ "->" ++ toS (sideQuote buySide)
+
+edgeWeightM
     :: forall numeraire base quote slippage.
        (KnownSymbol numeraire, KnownSymbol base, KnownSymbol quote, KnownFraction slippage)
     => Sym
     -> RateMap numeraire
     -> BuySide base quote
-    -> Weight numeraire slippage
-edgeWeight quoteSym rateMap buySide =
-    fromRational $ mkEdgeWeight denseQty
+    -> Maybe (Weight numeraire slippage)
+edgeWeightM quoteSym rateMap buySide =
+    fromRational . mkEdgeWeight <$> denseQtyM
   where
     slipPct = fracValPercent (Proxy :: Proxy slippage)
-    denseQty = numeraireQuoteQty quoteSym rateMap $
+    denseQtyM = numeraireQuoteQty quoteSym rateMap $
         Match.slippageSell buySide slipPct
 
 mkEdgeWeight :: Money.Dense numeraire -> Rational
@@ -96,12 +105,12 @@ numeraireQuoteQty
     => Sym
     -> RateMap numeraire
     -> Match.MatchResult base quote
-    -> Money.Dense numeraire
+    -> Maybe (Money.Dense numeraire)
 numeraireQuoteQty quoteSym rateMap matchRes =
-    case lookupRateFail quoteSym rateMap of
-        -- Invert 'RateFrom numeraire' in order to convert *to* 'numeraire'
-        RateFrom erInv -> mkResult (Money.exchangeRateRecip erInv)
+    mkResultInvert <$> lookupRateM quoteSym rateMap
   where
+    -- Invert 'RateFrom numeraire' in order to convert *to* 'numeraire'
+    mkResultInvert (RateFrom erInv) = mkResult (Money.exchangeRateRecip erInv)
     mkResult :: forall src.
                 KnownSymbol src
              => Money.ExchangeRate src numeraire
@@ -159,7 +168,12 @@ pathEdges rateMap nodeMap =
   where
     fromSomeEdgeVenue :: SomeEdgeVenue -> G.LEdge (DepthEdge numeraire slippage)
     fromSomeEdgeVenue (SomeEdgeVenue (SomeEdge (Edge bs), v)) =
-        toEdge rateMap nodeMap (v,bs)
+        -- 'toEdgeM' returns edges that end up in 'DepthGraph'.
+        --  'pathEdges' takes in edges from 'DepthGraph', which means that 'toEdgeM'
+        --  must return a "Just" for this edge (because it did so in order for the edge
+        --  to end up the the 'DepthGraph' in the first place)
+        fromMaybe (error $ "BUG: pathEdges: " ++ showEdge bs ++ " not found") $
+        toEdgeM rateMap nodeMap (v,bs)
 
 depthEdgeBooks
     :: [G.LNode (DepthEdge numeraire slippage)]
