@@ -85,16 +85,15 @@ edgeWeightM
     -> BuySide base quote
     -> Maybe (Weight numeraire slippage)
 edgeWeightM quoteSym rateMap buySide =
-    fromRational . mkEdgeWeight <$> denseQtyM
+    fromRational <$> (denseQtyM >>= mkEdgeWeight)
   where
     slipPct = fracValPercent (Proxy :: Proxy slippage)
     denseQtyM = numeraireQuoteQty quoteSym rateMap $
         Match.slippageSell buySide slipPct
 
-mkEdgeWeight :: Money.Dense numeraire -> Rational
+mkEdgeWeight :: Money.Dense numeraire -> Maybe Rational
 mkEdgeWeight dense = let qty = toRational dense in
-    if qty == 0 then 1000000%1 else 1 / qty
-    -- A zero-volume edge will get a weight as if it had 1e-6 volume
+    if qty == 0 then Nothing else Just (1 / qty)
 
 -- | Convert an amount denomiated in "quoteSym" to a
 --    quantity denominated in "numeraire" (approximation).
