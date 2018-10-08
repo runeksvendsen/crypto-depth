@@ -125,6 +125,11 @@ data LiquidPaths (numeraire :: Symbol) slippage =
     , lpSell :: [Paths.EdgePath numeraire]
     }
 
+instance Monoid (LiquidPaths numeraire slippage) where
+    mempty = LiquidPaths [] []
+    (LiquidPaths buys1 sells1) `mappend` (LiquidPaths buys2 sells2) =
+        LiquidPaths (buys1 `mappend` buys2) (sells1 `mappend` sells2)
+
 -- | Get buy and sell paths -- in descending order of liquidity at the given slippage --
 --    for the specified cryptocurrency
 buySellPath
