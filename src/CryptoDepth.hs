@@ -34,7 +34,7 @@ module CryptoDepth
 )
 where
 
-import CryptoDepth.Internal.DPrelude
+import CryptoDepth.Internal.DPrelude    hiding ((<>))
 import CryptoDepth.Internal.Types
 import CryptoDepth.Internal.Util
 import           CryptoDepth.Exchange (PathInfo(..))
@@ -44,6 +44,9 @@ import qualified CryptoDepth.RateMap as Rate
 import qualified Data.Graph.Inductive.Graph as G
 import qualified Data.HashMap.Strict as Map
 import qualified Money
+-- For Semigroup/Monoid instance
+import           Data.Semigroup         (Semigroup(..))
+import           Data.Monoid            (Monoid)
 
 
 type SymPathInfo numeraire slippage = Map Sym ([PathInfo numeraire slippage], [PathInfo numeraire slippage])
@@ -127,8 +130,11 @@ data LiquidPaths (numeraire :: Symbol) slippage =
 
 instance Monoid (LiquidPaths numeraire slippage) where
     mempty = LiquidPaths [] []
-    (LiquidPaths buys1 sells1) `mappend` (LiquidPaths buys2 sells2) =
-        LiquidPaths (buys1 `mappend` buys2) (sells1 `mappend` sells2)
+    mappend = (<>)
+
+instance Semigroup (LiquidPaths numeraire slippage) where
+    LiquidPaths buys1 sells1 <> LiquidPaths buys2 sells2 =
+        LiquidPaths (buys1 <> buys2) (sells1 <> sells2)
 
 -- | Get buy and sell paths -- in descending order of liquidity at the given slippage --
 --    for the specified cryptocurrency
