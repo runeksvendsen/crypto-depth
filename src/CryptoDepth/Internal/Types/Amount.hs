@@ -8,8 +8,6 @@ module CryptoDepth.Internal.Types.Amount
 where
 
 import CryptoDepth.Internal.DPrelude
-import CryptoDepth.Internal.Types
-import qualified Data.List.NonEmpty  as NE
 import qualified Money
 
 
