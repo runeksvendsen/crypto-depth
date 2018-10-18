@@ -24,7 +24,7 @@ htmlOut symVolumes = do
     let baseDir = "html"
     createDirectoryIfMissing False baseDir
     -- Write summary/main page
-    let summaryHtml = summary slipPct $ CD.totals symVolumes
+    let summaryHtml = Summary.summary slipPct $ CD.totals symVolumes
         slipPct = CD.fracValPercent (Proxy :: Proxy slippage)
     writeHtmlFile baseDir "index.html" summaryHtml
     -- Write crypto pages

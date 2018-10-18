@@ -20,7 +20,7 @@ summary
   :: forall numeraire.
      KnownSymbol numeraire
   => Rational
-  -> [(CD.Sym, Money.Dense numeraire, Money.Dense numeraire)]
+  -> [(CD.Sym, CD.Amount numeraire, CD.Amount numeraire)]
   -> Html ()
 summary slipPct symVolumes =
   htmlDoc titleStr (summaryTable symVolumes)
@@ -30,7 +30,7 @@ summary slipPct symVolumes =
 summaryTable
     :: forall numeraire.
        KnownSymbol numeraire
-    => [(CD.Sym, Money.Dense numeraire, Money.Dense numeraire)]
+    => [(CD.Sym, CD.Amount numeraire, CD.Amount numeraire)]
     -> Html ()
 summaryTable symVolumes = do
   let numeraire :: String
@@ -48,11 +48,11 @@ summaryTable symVolumes = do
 summaryRow
   :: KnownSymbol numeraire
   => Word
-  -> (CD.Sym, Money.Dense numeraire, Money.Dense numeraire)
+  -> (CD.Sym, CD.Amount numeraire, CD.Amount numeraire)
   -> Html ()
 summaryRow pos (sym, buyVol, sellVol) =
   tr_ $ do
     th_ [ scope_ "row" ] $ toHtml (show pos)
     td_ $ a_ [ href_ (toS sym <> ".html") ] $ (toHtml sym)
-    td_ (toHtml $ showDenseAmount sellVol)
-    td_ (toHtml $ showDenseAmount buyVol)
+    td_ (toHtml . showDenseAmount . CD.toDense $ sellVol)
+    td_ (toHtml . showDenseAmount . CD.toDense $ buyVol)

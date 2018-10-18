@@ -19,6 +19,7 @@ module CryptoDepth
 , Sym
 , Map
 , ExchangePath(..)
+, module Amount
 , SymPathInfo
 , OneDiv
 , KnownFraction(..)
@@ -37,6 +38,7 @@ where
 import CryptoDepth.Internal.DPrelude    hiding ((<>))
 import CryptoDepth.Internal.Types
 import CryptoDepth.Internal.Util
+import CryptoDepth.Internal.Types.Amount as Amount
 import           CryptoDepth.Exchange (PathInfo(..))
 import qualified CryptoDepth.Exchange as Exchange
 import qualified CryptoDepth.Paths as Paths
@@ -59,7 +61,7 @@ nonCryptos = ["USD", "EUR", "GBP", "JPY"]
 totals
     :: KnownSymbol numeraire
     => Map Sym ([PathInfo numeraire slippage], [PathInfo numeraire slippage])
-    -> [(Sym, Money.Dense numeraire, Money.Dense numeraire)]
+    -> [(Sym, Exchange.Amount numeraire, Exchange.Amount numeraire)]
 totals =
     sortBy descSellVolume . map total . Map.toList
   where
