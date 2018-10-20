@@ -32,7 +32,7 @@ data PathInfo numeraire slippage =
     PathInfo
     { piQty     :: Tagged slippage (Amount numeraire)   -- ^ Quantity at given slippage
     , piPath    :: NonEmpty SymVenue                    -- ^ Path (markets moved through)
-    } deriving (Show, Eq)
+    } deriving (Show, Eq, Ord)
 
 -- | Exchange by slippage through multiple orderbook sides
 slippageExchangeMulti
