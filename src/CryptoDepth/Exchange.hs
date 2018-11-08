@@ -9,12 +9,14 @@ module CryptoDepth.Exchange
 , piTotalQty
 , Tagged(..)
 , pathQty
+, module Amount
 )
 where
 
 import CryptoDepth.Internal.DPrelude
 import CryptoDepth.Internal.Types
 import CryptoDepth.Internal.Types.EdgePath
+import CryptoDepth.Internal.Types.Amount as Amount
 import OrderBook.Types              (BuySide, SellSide)
 import qualified OrderBook.Matching as Match
 import qualified Money
@@ -28,9 +30,9 @@ import Data.Tagged                  (Tagged(..))
 --    the price by 'slippage'
 data PathInfo numeraire slippage =
     PathInfo
-    { piQty     :: Tagged slippage (Money.Dense numeraire)    -- ^ Quantity at given slippage
-    , piPath    :: NonEmpty SymVenue        -- ^ Path (markets moved through)
-    } deriving (Show, Eq)
+    { piQty     :: Tagged slippage (Amount numeraire)   -- ^ Quantity at given slippage
+    , piPath    :: NonEmpty SymVenue                    -- ^ Path (markets moved through)
+    } deriving (Show, Eq, Ord, Generic)
 
 -- | Exchange by slippage through multiple orderbook sides
 slippageExchangeMulti
@@ -44,7 +46,7 @@ slippageExchangeMulti
 slippageExchangeMulti (EdgePath sides) = do
     (SomeEdge (Edge edge), symVenues) <- composeSS sides
     (sym, qty) <- exchBuySide edge
-    return $ (sym, PathInfo (Tagged qty) symVenues)
+    return $ (sym, PathInfo (Tagged . fromDense $ qty) symVenues)
   where
     slip = fracValPercent (Proxy :: Proxy slippage)
     conversionErr :: String -> String
@@ -67,10 +69,10 @@ slippageExchangeMulti (EdgePath sides) = do
                                            Match.resBaseQty $ Match.slippageSell bs slip)
                     Nothing   -> Left  $ conversionErr (show $ Edge bs)
 
-piTotalQty :: [PathInfo numeraire slippage] -> Money.Dense numeraire
+piTotalQty :: [PathInfo numeraire slippage] -> Amount numeraire
 piTotalQty = sum . map (unTagged . piQty)
 
 pathQty :: (KnownSymbol numeraire, KnownFraction slippage)
         => EdgePath numeraire
-        -> Tagged slippage (Money.Dense numeraire)
+        -> Tagged slippage (Amount numeraire)
 pathQty = piQty . snd . throwBug . slippageExchangeMulti

@@ -58,7 +58,7 @@ cryptoRow pos pi =
   tr_ $ do
     th_ [ scope_ "row" ] $ toHtml (show pos)
     td_ (htmlPath pi)
-    td_ (toHtml $ showDenseAmount . CD.unTagged $ CD.piQty pi)
+    td_ (toHtml $ showDenseAmount . CD.toDense . CD.unTagged $ CD.piQty pi)
 
 htmlPath
     :: KnownSymbol numeraire
@@ -77,9 +77,3 @@ htmlPath CD.PathInfo{..} =
     symVenueHtml :: [Html ()] -> CD.ExchangePath -> [Html ()]
     symVenueHtml pre (CD.ExchangePath venue src dst middle) =
         (toHtml (symbolText $ src :| middle ++ [dst]) >> sub_ (toHtml venue)) : pre
-
-
-
-
-
-

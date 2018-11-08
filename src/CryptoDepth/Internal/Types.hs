@@ -6,6 +6,7 @@
 module CryptoDepth.Internal.Types
 ( module CryptoDepth.Internal.Types
 , module CryptoDepth.Internal.Types.OneDiv
+, module Amount
 , module NE
 , Map.HashMap
 )
@@ -13,6 +14,7 @@ where
 
 import CryptoDepth.Internal.DPrelude
 import CryptoDepth.Internal.Types.OneDiv
+import CryptoDepth.Internal.Types.Amount as Amount
 import CryptoVenues.Types.Market
 import CryptoVenues.Fetch.MarketBook
 import OrderBook.Types

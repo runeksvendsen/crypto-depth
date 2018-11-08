@@ -23,19 +23,19 @@ import qualified Data.Graph.Inductive.Query.BFS as G
 import Data.List (init)
 import qualified Data.HashMap.Strict as Map
 import qualified Money
+-- DEBUG
+import qualified Data.Graph.Inductive.Dot   as Dot
+import System.IO.Unsafe                     (unsafePerformIO)
 
 
-
-lookupRateFail
+lookupRateM
     :: forall numeraire.
        KnownSymbol numeraire
     => Sym
     -> RateMap numeraire
-    -> RateFrom numeraire
-lookupRateFail sym rateMap = fromMaybe (error $ numeraire ++ " rate not found: " ++ show sym) $
-    Map.lookup sym rateMap
-  where
-    numeraire = symbolVal (Proxy :: Proxy numeraire)
+    -> Maybe (RateFrom numeraire)
+lookupRateM =
+    Map.lookup
 
 type RateGraph = G.Gr Sym Money.SomeExchangeRate
 type RateMap numeraire = Map.HashMap Sym (RateFrom numeraire)
@@ -78,11 +78,16 @@ toRate =
             Just Refl -> Right . RateFrom $ er2 Cat.. er1
             Nothing   -> Left $ "Incompatible from/to rates: " ++ show (er1,er2)
 
-buildRateMap :: KnownSymbol numeraire => [ABook] -> RateMap numeraire
+buildRateMap :: forall numeraire. KnownSymbol numeraire => [ABook] -> RateMap numeraire
 buildRateMap books =
-    toRateMap (graph :: RateGraph) nodeMap
+    toRateMap (writeDot (graph :: RateGraph)) nodeMap
   where
     (graph, nodeMap) = buildGraph toRateEdges books
+    writeDot g = unsafePerformIO $ do
+        let dot = Dot.showDot (Dot.fglToDot g)
+            numeraire = symbolVal (Proxy :: Proxy numeraire)
+        writeFile ("rateMap-" ++ numeraire ++ ".dot") (toS dot)
+        return g
 
 toRateMap
     :: forall gr numeraire.
