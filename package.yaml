@@ -55,7 +55,6 @@ dependencies:
 - lucid
 - text
 - directory
-- fgl-visualize   # debug RateMap
 
 library:
   source-dirs: src

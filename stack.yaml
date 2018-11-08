@@ -25,10 +25,6 @@ extra-deps:
 - half-0.2.2.3@sha256:52386a48e7fd42f4a1d49799073bb3d04477168c88b6541d5f66637d7c2e838c
 ### END safe-money deps
 - time-units-1.0.0
-- fgl-visualize-0.1.0.1@sha256:e682066053a6e75478a08fd6822dd0143a3b8ea23244bdb01dd389a266447c5e
-- dotgen-0.4.2@sha256:309b7cc8a3593a8e48bee7b53020d5f72db156d58edf78a0214f58fbb84b292b
-
-
 
 # Override default flag values for local packages and extra-deps
 flags: {}
