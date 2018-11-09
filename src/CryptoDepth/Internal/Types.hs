@@ -195,7 +195,7 @@ sideEq a1 a2 =
 
 instance Show (Pair (Maybe SomeEdgeVenue) (Weight numeraire slippage)) where
     show (Pair sideM rat) =
-        printf "{%s %f}" (showSide sideM) (realToFrac rat :: Double)
+        printf "%s" (showSide sideM)
       where
         showSide (Just side) = show side
         showSide Nothing = "-"
