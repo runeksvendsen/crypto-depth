@@ -59,11 +59,9 @@ toEdgeM
     -> (Venue, BuySide base quote)
     -> Maybe (G.LEdge (DepthEdge numeraire slippage))
 toEdgeM rateMap symbolMap (venue, buySide) =
-    maybe logNotFound mkEdge pairSellM
+    mkEdge <$> pairSellM
   where
-    logNotFound = trace logString Nothing
-    logString = "DEBUG: Skipping edge " ++ showEdge buySide
-    mkEdge pairSell = Just (baseNode, quoteNode, pairSell)
+    mkEdge pairSell = (baseNode, quoteNode, pairSell)
     -- Node info
     quoteSym = sideQuote buySide
     baseSym  = sideBase buySide
