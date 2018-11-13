@@ -124,13 +124,11 @@ allPaths
     => G.Node       -- ^ Start node
     -> gr a b
     -> [[G.LNode b]]
-allPaths start g =
-      map reverse
-    $ map init
-    $ filter (not . null)
-    $ map (G.unLPath)
-    $ G.lbft start g
+allPaths start =
+      map (reverse . init)
+    . filter (not . null)
+    . map (G.unLPath)
+    . G.lbft start
     -- G.lbft: From source of Data.Graph.Inductive.Query.BFS:
     -- -- Note that the label of the first node in a returned path is meaningless;
     -- -- all other nodes are paired with the label of their incoming edge.
-
