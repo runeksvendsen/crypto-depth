@@ -133,7 +133,8 @@ allPaths
     -> gr a b
     -> [[G.LNode b]]
 allPaths start =
-      map (reverse . init)
+      filter (not . null)
+    . map (reverse . init)
     . filter (not . null)
     . map (G.unLPath)
     . G.lbft start
