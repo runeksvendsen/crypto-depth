@@ -23,6 +23,9 @@ import qualified Data.Graph.Inductive.Query.BFS as G
 import Data.List (init)
 import qualified Data.HashMap.Strict as Map
 import qualified Money
+-- TEST
+import Prelude (last)
+import Data.List (groupBy)
 
 
 lookupRateM
@@ -91,6 +94,11 @@ toRateMap g nodeMap =
       foldr (insertRate . toKeyVal) Map.empty
     $ map (either error id)             -- A "Left" value indicates a bug, so we throw an error
     $ map (toRate . map snd)
+        $ concat
+        $ map traceIt
+        $ trace "####### GROUPED EDGES #######"
+        $ groupBy (\e1 e2 -> fst (last e1) == fst (last e2))
+        $ sortOn (fst . last)
     $ allPaths (lookupSymFail numeraire nodeMap) g    -- Find all paths with startNode=numeraire
   where
     toKeyVal rateFrom = (rateFromDst rateFrom, rateFrom)
