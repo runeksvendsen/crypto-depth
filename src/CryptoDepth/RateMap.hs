@@ -97,7 +97,10 @@ toRateMap g nodeMap =
         $ concat
         $ map traceIt
         $ trace "####### GROUPED EDGES #######"
-        $ groupBy (\e1 e2 -> fst (last e1) == fst (last e2))
+        $ groupBy (\e1 e2 ->
+               Money.someExchangeRateDstCurrency (snd . last $ e1)
+            == Money.someExchangeRateDstCurrency (snd . last $ e2)
+            )
         $ sortOn (fst . last)
     $ allPaths (lookupSymFail numeraire nodeMap) g    -- Find all paths with startNode=numeraire
   where
