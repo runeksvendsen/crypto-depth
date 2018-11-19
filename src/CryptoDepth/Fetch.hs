@@ -1,30 +1,19 @@
 module CryptoDepth.Fetch where
 
 
-import Prelude
-import Data.Proxy (Proxy(..))
-import Data.Ratio   ((%))
-import GHC.TypeLits (KnownSymbol, symbolVal)
-import Text.Printf (printf)
-import Control.Monad.Trans.Class (lift)
-import qualified Data.Text as T
-
+import           Prelude
 import qualified CryptoDepth
-import qualified CryptoDepth.Output.CLI as CLI
-import qualified CryptoDepth.Output.HTML as HTML
+import           CryptoVenues.Types.Market
+import qualified CryptoVenues.Fetch.EnumMarkets    as EnumMarkets
+import           CryptoVenues.Fetch.MarketBook     (fetchMarketBook)
+import qualified CryptoVenues.Venues               as Venues
+import qualified CryptoVenues.Types.AppM           as AppM
 
-import OrderBook.Types              (AnyBook(..))
-import CryptoVenues.Types.Market
-import CryptoVenues.Fetch.MarketBook
-import qualified CryptoVenues.Fetch.EnumMarkets as EnumMarkets
-import qualified CryptoVenues.Venues as Venues
-import qualified CryptoVenues.Types.AppM as AppM
-
-import qualified Network.HTTP.Client   as HTTP
-import qualified Network.HTTP.Client.TLS as HTTPS
-import qualified Control.Logging as Log
-import qualified Control.Monad.Parallel   as Par
-import Data.List ((\\))
+import           Data.Proxy                        (Proxy(..))
+import           GHC.TypeLits                      (KnownSymbol, symbolVal)
+import           Data.List                         ((\\))
+import qualified Data.Text                         as T
+import qualified Control.Monad.Parallel            as Par
 
 
 -- | Fetch books, in parallel, from all venues
@@ -43,9 +32,9 @@ fetchVenueBooks
       (KnownSymbol numeraire)
    => Proxy numeraire
    -> Word
-   -> AnyVenue
+   -> Venues.AnyVenue
    -> AppM.AppM IO [CryptoDepth.ABook]
-fetchVenueBooks _ numObLimit (AnyVenue p) = do
+fetchVenueBooks _ numObLimit (Venues.AnyVenue p) = do
     allMarkets :: [Market venue] <- EnumMarkets.marketList p
     -- Begin DEBUG stuff
     let btcEth = ["BTC", "ETH"]
