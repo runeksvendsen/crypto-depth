@@ -47,8 +47,6 @@ fetchVenueBooks
    -> AppM.AppM IO [CryptoDepth.ABook]
 fetchVenueBooks _ numObLimit (AnyVenue p) = do
     allMarkets :: [Market venue] <- EnumMarkets.marketList p
-    let marketName = symbolVal (Proxy :: Proxy venue)
-    lift . Log.log' $ T.pack (printf "%s: %d markets" marketName (length allMarkets) :: String)
     -- Begin DEBUG stuff
     let btcEth = ["BTC", "ETH"]
         numeraire = T.pack $ symbolVal (Proxy :: Proxy numeraire)
