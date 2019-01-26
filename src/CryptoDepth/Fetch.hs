@@ -1,4 +1,9 @@
-module CryptoDepth.Fetch where
+module CryptoDepth.Fetch
+( allBooks
+, allBooksSimple
+, CryptoDepth.ABook(..)
+)
+where
 
 
 import           Prelude
@@ -16,10 +21,13 @@ import qualified Data.Text                         as T
 import qualified Control.Monad.Parallel            as Par
 
 
+allBooksSimple :: AppM.AppM IO [CryptoDepth.ABook]
+allBooksSimple = allBooks Proxy maxBound
+
 -- | Fetch books, in parallel, from all venues
 allBooks
     :: KnownSymbol numeraire
-    => Proxy numeraire
+    => Proxy numeraire  -- ^ Only used for debugging (must exist though)
     -> Word
     -> AppM.AppM IO [CryptoDepth.ABook]
 allBooks p numObLimit =
