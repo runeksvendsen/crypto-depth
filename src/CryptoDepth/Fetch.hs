@@ -22,7 +22,7 @@ import qualified Control.Monad.Parallel            as Par
 
 
 allBooksSimple :: AppM.AppM IO [CryptoDepth.ABook]
-allBooksSimple = allBooks Proxy maxBound
+allBooksSimple = allBooks (Proxy :: Proxy "USD") maxBound
 
 -- | Fetch books, in parallel, from all venues
 allBooks
