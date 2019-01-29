@@ -1,6 +1,7 @@
 module Main where
 
 import Prelude
+import Protolude (rights, lefts, toS, forM_)
 import Data.Proxy (Proxy(..))
 import Data.Ratio   ((%))
 import GHC.TypeLits (symbolVal)
@@ -48,8 +49,11 @@ main = withLogging $ do
     man <- HTTP.newManager HTTPS.tlsManagerSettings -- { HTTP.managerModifyRequest = logRequest }
     let throwErrM ioA = ioA >>= either (error . show) return
     resMap <- throwErrM $ AppM.runAppM man maxRetries $ do
-        books <- Fetch.allBooks (Proxy :: Proxy Numeraire) numObLimit
-        let (graph, rateMap, nodeMap) = CryptoDepth.buildDepthGraph books
+        booksE <- Fetch.allBooks (Proxy :: Proxy Numeraire) numObLimit
+        let books = concat $ rights booksE
+            errors = lefts booksE
+            (graph, rateMap, nodeMap) = CryptoDepth.buildDepthGraph books
+        forM_ errors (Log.warn' . toS . show)
         return $ CryptoDepth.symLiquidPaths rateMap nodeMap (graph :: Graph)
     let res :: CryptoDepth.Map CryptoDepth.Sym ([PathInfoNumr], [PathInfoNumr]) =
             CryptoDepth.allPathsInfos resMap

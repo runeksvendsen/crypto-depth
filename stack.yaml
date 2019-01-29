@@ -8,7 +8,7 @@ packages:
   extra-dep: true
 - location:
     git: https://github.com/runeksvendsen/crypto-venues.git
-    commit: 84043b03ba0292d19477f1f765ac91e812edc056
+    commit: d306a1483d8cdab4d9e8f665d0e003e1ff80be72
   extra-dep: true
 
 

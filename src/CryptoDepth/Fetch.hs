@@ -21,7 +21,7 @@ import qualified Data.Text                         as T
 import qualified Control.Monad.Parallel            as Par
 
 
-allBooksSimple :: AppM.AppM IO [CryptoDepth.ABook]
+allBooksSimple :: AppM.AppM IO [Either AppM.Error [CryptoDepth.ABook]]
 allBooksSimple = allBooks (Proxy :: Proxy "USD") maxBound
 
 -- | Fetch books, in parallel, from all venues
@@ -29,9 +29,9 @@ allBooks
     :: KnownSymbol numeraire
     => Proxy numeraire  -- ^ Only used for debugging (must exist though)
     -> Word
-    -> AppM.AppM IO [CryptoDepth.ABook]
+    -> AppM.AppM IO [Either AppM.Error [CryptoDepth.ABook]]
 allBooks p numObLimit =
-   concat <$> Par.forM Venues.allVenues (fetchVenueBooks p numObLimit)
+    Par.forM Venues.allVenues (AppM.evalAppM . fetchVenueBooks p numObLimit)
 
 -- | Fetch books from a single venue
 --  DEBUG: limit number of fetched books to 'numObLimit'
@@ -42,8 +42,8 @@ fetchVenueBooks
    -> Word
    -> Venues.AnyVenue
    -> AppM.AppM IO [CryptoDepth.ABook]
-fetchVenueBooks _ numObLimit (Venues.AnyVenue p) = do
-    allMarkets :: [Market venue] <- EnumMarkets.marketList p
+fetchVenueBooks _ numObLimit (Venues.AnyVenue (_ :: Proxy venue)) = do
+    allMarkets :: [Market venue] <- EnumMarkets.marketList
     -- Begin DEBUG stuff
     let btcEth = ["BTC", "ETH"]
         numeraire = T.pack $ symbolVal (Proxy :: Proxy numeraire)
@@ -52,4 +52,3 @@ fetchVenueBooks _ numObLimit (Venues.AnyVenue p) = do
         marketList = numeraireLst ++ markets
     -- End DEBUG stuff
     map CryptoDepth.toABook <$> mapM fetchMarketBook marketList
-
