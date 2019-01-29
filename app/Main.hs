@@ -1,31 +1,18 @@
 module Main where
 
-import Prelude
-import Protolude (rights, lefts, toS, forM_)
-import Data.Proxy (Proxy(..))
-import Data.Ratio   ((%))
-import GHC.TypeLits (symbolVal)
-import Text.Printf (printf)
-import Control.Monad.Trans.Class (lift)
-import qualified Data.Text as T
+import           Prelude
+import           Protolude                  (rights, lefts, toS, forM_)
+import           Data.Proxy                 (Proxy(..))
 
 import qualified CryptoDepth
-import qualified CryptoDepth.Fetch as Fetch
-import qualified CryptoDepth.Output.CLI as CLI
-import qualified CryptoDepth.Output.HTML as HTML
+import qualified CryptoDepth.Fetch          as Fetch
+import qualified CryptoDepth.Output.HTML    as HTML
+import qualified CryptoVenues.Types.AppM    as AppM
 
-import OrderBook.Types              (AnyBook(..))
-import CryptoVenues.Types.Market
-import CryptoVenues.Fetch.MarketBook
-import qualified CryptoVenues.Fetch.EnumMarkets as EnumMarkets
-import qualified CryptoVenues.Venues as Venues
-import qualified CryptoVenues.Types.AppM as AppM
+import qualified Network.HTTP.Client        as HTTP
+import qualified Network.HTTP.Client.TLS    as HTTPS
+import qualified Control.Logging            as Log
 
-import qualified Network.HTTP.Client   as HTTP
-import qualified Network.HTTP.Client.TLS as HTTPS
-import qualified Control.Logging as Log
-import qualified Control.Monad.Parallel   as Par
-import Data.List ((\\))
 
 
 -- | In which currency do we want to measure liquidity?
