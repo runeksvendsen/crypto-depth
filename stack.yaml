@@ -4,11 +4,11 @@ packages:
 - .
 - location:
     git: https://github.com/runeksvendsen/orderbook.git
-    commit: 2e2551e1333ec7bc1c4745e6a547bdf4887d79b4
+    commit: 1cfe64aeb59ddebcfb0b8353f82457d16766fa36
   extra-dep: true
 - location:
     git: https://github.com/runeksvendsen/crypto-venues.git
-    commit: d306a1483d8cdab4d9e8f665d0e003e1ff80be72
+    commit: 7c9a28642fbd6a770616617b29c0a50c58088303
   extra-dep: true
 
 
