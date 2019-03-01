@@ -9,6 +9,7 @@ module CryptoDepth.Internal.Types
 , module Amount
 , module NE
 , Map.HashMap
+, ABook(ABook)
 )
 where
 
@@ -17,6 +18,7 @@ import CryptoDepth.Internal.Types.OneDiv
 import CryptoDepth.Internal.Types.Amount as Amount
 import CryptoVenues.Types.Market
 import CryptoVenues.Fetch.MarketBook
+import CryptoVenues.Types.ABook         (ABook(ABook))
 import OrderBook.Types
 import qualified OrderBook.Types    as OB
 import qualified Control.Category   as Cat
@@ -213,32 +215,6 @@ showEdgeVenue v _ = printf "<%s: %s -> %s>"
         (toS v :: String) (symbolVal (Proxy :: Proxy src)) (symbolVal (Proxy :: Proxy dst))
 
 
--- | Just some order book
-data ABook =
-    forall venue base quote.
-    ( KnownSymbol venue, KnownSymbol base, KnownSymbol quote
-    , MarketBook venue)
-       => ABook (OrderBook venue base quote)
-
-instance Show ABook where
-    show (ABook ob) =
-        toS $ abBase ob <> "/" <> abQuote ob <> " (" <> abVenue ob <> ")"
-
-instance Eq ABook where
-    (ABook ob1) == (ABook ob2) =
-        case ob1 of
-            (ob1 :: OrderBook venue1 base1 quote1) ->
-                case ob2 of
-                    (ob2 :: OrderBook venue2 base2 quote2) ->
-                        case sameSymbol (Proxy :: Proxy venue1) (Proxy :: Proxy venue2) of
-                            Nothing -> False
-                            Just _  ->
-                                case sameSymbol (Proxy :: Proxy base1) (Proxy :: Proxy base2) of
-                                    Nothing -> False
-                                    Just _  ->
-                                        case sameSymbol (Proxy :: Proxy quote1) (Proxy :: Proxy quote2) of
-                                            Nothing -> False
-                                            Just _  -> True
 
 instance Show (Pair (Maybe ABook) Rational) where
     show (Pair bookM rat) =
